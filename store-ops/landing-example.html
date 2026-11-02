@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đặt trà sữa (form mẫu)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0 auto; max-width: 480px; padding: 12px 16px 32px; font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1f2933; background: #fff; }
+    h1 { font-size: 20px; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    input[type=text], input[type=tel], input[type=number], select, textarea { width: 100%; min-height: 44px; margin-top: 4px; padding: 8px 10px; font: inherit; border: 1px solid #9aa5b1; border-radius: 6px; background: #fff; color: inherit; }
+    fieldset { min-width: 0; margin: 12px 0 0; padding: 8px 12px 12px; border: 1px solid #cbd2d9; border-radius: 6px; }
+    legend { font-weight: 600; padding: 0 4px; }
+    .choice { display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 0; font-weight: 400; }
+    .choice input { width: 20px; height: 20px; margin: 0; }
+    .trap { position: absolute; left: -9999px; }
+    button, a.button { display: block; width: 100%; min-height: 44px; margin-top: 16px; padding: 10px 14px; font: inherit; font-weight: 700; text-align: center; text-decoration: none; border: 0; border-radius: 6px; background: #1f6f43; color: #fff; }
+    button:disabled { opacity: .6; }
+    .total { margin-top: 16px; font-size: 18px; font-weight: 700; }
+    .message { margin-top: 12px; padding: 10px 12px; border-radius: 6px; }
+    .message.error { background: #fdecea; color: #8a1c13; }
+    .message.success { background: #e6f4ea; color: #14532d; }
+    .code { display: block; font-size: 24px; font-weight: 700; }
+    .qr { display: block; width: 100%; max-width: 320px; margin: 12px auto; background: #fff; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- Form mẫu theo hợp đồng trong order-data.md, không phải thiết kế trang thật. -->
+  <h1>Đặt trà sữa</h1>
+  <div id="status" class="message" role="status">Đang tải menu...</div>
+
+  <form id="order-form" novalidate hidden>
+    <fieldset>
+      <legend>Món</legend>
+      <label for="product">Chọn món</label>
+      <select id="product"></select>
+      <label for="quantity">Số lượng</label>
+      <input id="quantity" type="number" inputmode="numeric" min="1" step="1" value="1">
+      <div id="toppings"></div>
+    </fieldset>
+
+    <label for="name">Tên</label>
+    <input id="name" type="text" autocomplete="name" maxlength="100">
+
+    <label for="phone">Số điện thoại</label>
+    <input id="phone" type="tel" autocomplete="tel">
+
+    <fieldset>
+      <legend>Nhận hàng</legend>
+      <label class="choice"><input type="radio" name="delivery" value="giao" checked> Giao hàng</label>
+      <label class="choice"><input type="radio" name="delivery" value="tu_lay"> Tự đến lấy</label>
+      <div id="delivery-fields">
+        <label for="zone">Khu vực</label>
+        <select id="zone"></select>
+        <label for="address">Địa chỉ</label>
+        <input id="address" type="text" autocomplete="street-address" maxlength="300">
+      </div>
+    </fieldset>
+
+    <label for="note">Ghi chú</label>
+    <textarea id="note" maxlength="500"></textarea>
+
+    <!-- Ô bẫy bot: người dùng không thấy, có giá trị thì server không tạo đơn. -->
+    <div class="trap" aria-hidden="true">
+      <label for="website">Website</label>
+      <input id="website" type="text" tabindex="-1" autocomplete="off">
+    </div>
+
+    <fieldset>
+      <legend>Thanh toán</legend>
+      <label class="choice"><input type="radio" name="payment" value="cod" checked> Tiền mặt khi nhận hàng (COD)</label>
+      <label class="choice" id="payment-transfer" hidden><input type="radio" name="payment" value="chuyen_khoan"> Chuyển khoản trước bằng QR</label>
+    </fieldset>
+    <p>Số điện thoại và địa chỉ chỉ dùng để giao hàng.</p>
+
+    <div class="total">Tổng: <span id="total">0đ</span></div>
+    <div id="error" class="message error" hidden role="alert"></div>
+    <button id="submit" type="submit">Đặt hàng</button>
+  </form>
+
+  <div id="result" class="message success" hidden>
+    <span>Đã nhận đơn. Mã đơn của bạn:</span>
+    <span class="code" id="result-code"></span>
+    <span id="result-detail"></span>
+    <div id="transfer" hidden>
+      <img id="transfer-qr" class="qr" alt="Mã QR chuyển khoản">
+      <div id="transfer-qr-error" class="message error" hidden role="alert">Không tải được ảnh QR. Vui lòng chuyển khoản theo thông tin bên dưới.</div>
+      <a id="transfer-link" target="_blank" rel="noopener">Mở ảnh QR</a>
+      <p>Đang đặt trên điện thoại này thì chuyển khoản theo thông tin sau:</p>
+      <div>Ngân hàng: <strong id="transfer-bank"></strong></div>
+      <div>Số tài khoản: <strong id="transfer-account"></strong></div>
+      <div>Tên tài khoản: <strong id="transfer-account-name"></strong></div>
+      <div>Số tiền: <strong id="transfer-amount"></strong></div>
+      <div>Nội dung: <strong id="transfer-content"></strong></div>
+      <p>Đơn được làm sau khi nhóm xác nhận đã nhận tiền. Vui lòng giữ đúng số tiền và nội dung khi chuyển.</p>
+    </div>
+  </div>
+
+  <a id="messenger" class="button" hidden>Nhắn Messenger để đặt hàng</a>
+
+  <script>
+    // Đổi ba giá trị này trước khi thử.
+    var WEB_APP_URL = 'DAN_URL_WEB_APP_VAO_DAY';
+    var MESSENGER_URL = 'https://m.me/DAN_TEN_PAGE_VAO_DAY';
+    var DELIVERY_NOTE = 'Giao từ ngày 7/11/2026.';
+
+    var ZONE_LABELS = { trong_2km: 'Trong 2km', den_10km: 'Đến 10km' };
+    var config = null;
+    // Tạo một lần cho mỗi lần đặt. Thử lại sau lỗi vẫn dùng mã này nên không tạo đơn trùng.
+    var submissionId = crypto.randomUUID ? crypto.randomUUID() : 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+
+    function byId(id) { return document.getElementById(id); }
+
+    function money(value) {
+      return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + 'đ';
+    }
+
+    function showMessenger() {
+      byId('messenger').href = MESSENGER_URL;
+      byId('messenger').hidden = false;
+    }
+
+    function option(value, text) {
+      var el = document.createElement('option');
+      el.value = value;
+      el.textContent = text;
+      return el;
+    }
+
+    function selectedToppings() {
+      return Array.prototype.map.call(document.querySelectorAll('.topping:checked'), function (box) {
+        return box.value;
+      });
+    }
+
+    function priceOf(list, idField, id) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i][idField] === id) return list[i].price;
+      }
+      return 0;
+    }
+
+    /** Chỉ để xem trước. Số tiền thật do server tính và trả về sau khi đặt. */
+    function updateTotal() {
+      var quantity = Number(byId('quantity').value);
+      var unit = priceOf(config.products, 'product_id', byId('product').value);
+      selectedToppings().forEach(function (id) { unit += priceOf(config.toppings, 'topping_id', id); });
+      var isDelivery = document.querySelector('input[name=delivery]:checked').value === 'giao';
+      var fee = config.shipping_fees[isDelivery ? byId('zone').value : 'tu_lay'] || 0;
+      byId('total').textContent = money(unit * (Number.isInteger(quantity) && quantity > 0 ? quantity : 0) + fee);
+      byId('delivery-fields').hidden = !isDelivery;
+    }
+
+    function renderForm() {
+      config.products.forEach(function (p) {
+        byId('product').appendChild(option(p.product_id, p.name + ' - ' + money(p.price)));
+      });
+      config.toppings.forEach(function (t) {
+        var label = document.createElement('label');
+        label.className = 'choice';
+        var box = document.createElement('input');
+        box.type = 'checkbox';
+        box.className = 'topping';
+        box.value = t.topping_id;
+        label.appendChild(box);
+        label.appendChild(document.createTextNode(' ' + t.name + (t.price ? ' +' + money(t.price) : '')));
+        byId('toppings').appendChild(label);
+      });
+      ['trong_2km', 'den_10km'].forEach(function (zone) {
+        byId('zone').appendChild(option(zone, ZONE_LABELS[zone] + ' - ' + money(config.shipping_fees[zone])));
+      });
+      byId('payment-transfer').hidden = config.transfer_enabled !== true;
+      byId('status').hidden = true;
+      byId('order-form').hidden = false;
+      updateTotal();
+    }
+
+    function showStatus(text) {
+      byId('status').textContent = text;
+      byId('status').className = 'message error';
+      byId('status').hidden = false;
+    }
+
+    function loadConfig() {
+      fetch(WEB_APP_URL)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data.ok) throw new Error(data.error_code);
+          config = data;
+          if (!config.orders_open) {
+            showStatus('Hiện đang tạm đóng nhận đơn. Vui lòng nhắn Messenger.');
+            showMessenger();
+            return;
+          }
+          renderForm();
+        })
+        .catch(function () {
+          showStatus('Chưa tải được menu. Vui lòng nhắn Messenger để đặt hàng.');
+          showMessenger();
+        });
+    }
+
+    function buildPayload() {
+      var isDelivery = document.querySelector('input[name=delivery]:checked').value === 'giao';
+      return {
+        submission_id: submissionId,
+        source: 'landing',
+        name: byId('name').value,
+        phone: byId('phone').value,
+        contact: '',
+        items: [{ product_id: byId('product').value, quantity: Number(byId('quantity').value), toppings: selectedToppings() }],
+        delivery_method: isDelivery ? 'giao' : 'tu_lay',
+        zone: isDelivery ? byId('zone').value : '',
+        address: isDelivery ? byId('address').value : '',
+        payment_method: document.querySelector('input[name=payment]:checked').value,
+        note: byId('note').value,
+        website: byId('website').value
+      };
+    }
+
+    function setBusy(busy) {
+      byId('submit').disabled = busy;
+      byId('submit').textContent = busy ? 'Đang gửi...' : 'Đặt hàng';
+    }
+
+    function showError(text, withMessenger) {
+      byId('error').textContent = text;
+      byId('error').hidden = false;
+      if (withMessenger) showMessenger();
+    }
+
+    function onResponse(data) {
+      if (data.ok) {
+        byId('result-code').textContent = data.order_code;
+        byId('result-detail').textContent = 'Tổng ' + money(data.total) + ', đã gồm phí ship ' + money(data.shipping_fee) + '. ' + DELIVERY_NOTE;
+        if (data.transfer) {
+          byId('transfer-qr').addEventListener('error', function () {
+            byId('transfer-qr').hidden = true;
+            byId('transfer-qr-error').hidden = false;
+          });
+          byId('transfer-qr').src = data.transfer.qr_url;
+          byId('transfer-link').href = data.transfer.qr_url;
+          byId('transfer-bank').textContent = data.transfer.bank_code;
+          byId('transfer-account').textContent = data.transfer.bank_account;
+          byId('transfer-account-name').textContent = data.transfer.bank_account_name;
+          byId('transfer-amount').textContent = money(data.transfer.amount);
+          byId('transfer-content').textContent = data.transfer.content;
+          byId('transfer').hidden = false;
+        }
+        byId('order-form').hidden = true;
+        byId('result').hidden = false;
+        window.scrollTo(0, 0);
+        return;
+      }
+      // INVALID_INPUT cho khách sửa ngay. Các mã còn lại mời nhắn Messenger.
+      showError(data.message, data.error_code !== 'INVALID_INPUT');
+    }
+
+    byId('order-form').addEventListener('submit', function (event) {
+      event.preventDefault();
+      byId('error').hidden = true;
+      setBusy(true);
+      // text/plain để trình duyệt không gửi CORS preflight; thân vẫn là JSON.
+      fetch(WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(buildPayload())
+      })
+        .then(function (res) { return res.json(); })
+        .then(onResponse)
+        .catch(function () {
+          showError('Chưa gửi được đơn. Bạn có thể bấm Đặt hàng lại, đơn sẽ không bị trùng, hoặc nhắn Messenger.', true);
+        })
+        .then(function () { setBusy(false); });
+    });
+    byId('order-form').addEventListener('change', updateTotal);
+    byId('order-form').addEventListener('input', updateTotal);
+
+    loadConfig();
+  </script>
+</body>
+</html>

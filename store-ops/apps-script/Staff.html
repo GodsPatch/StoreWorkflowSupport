@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="light only">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+  <style>
+    /* Trân châu nắng: chỉ giao diện sáng, mọi màu đặt rõ để trang trông giống nhau trên mọi máy. */
+    :root {
+      color-scheme: light only;
+      --surface-base: #FFFBF0;
+      --surface-raised: #FFFFFF;
+      --surface-sunken: #FFF3D6;
+      --ink-primary: #3E2723;
+      --ink-secondary: #7A6052;
+      --ink-on-amber: #3E2723;
+      --amber: #FFD54F;
+      --amber-strong: #FFB300;
+      --tea: #6D4C41;
+      --border-hairline: #F0E2C2;
+      --state-open: #2E7D32;
+      --state-open-soft: #E3F4E1;
+      --state-closed: #C62828;
+      --state-closed-soft: #FDE4E1;
+      --flag-call: #FCE5CD;
+      --flag-transfer: #FFF2CC;
+      --skeleton: #F3E8CF;
+      --font: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      --tap: 48px;
+      --bottom-bar: 84px;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--surface-base); }
+    body {
+      margin: 0; min-height: 100vh;
+      background: var(--surface-base); color: var(--ink-primary);
+      font: 400 16px/1.5 var(--font);
+      -webkit-text-size-adjust: 100%;
+    }
+    [hidden] { display: none !important; }
+    button, input, select, textarea { font: inherit; color: var(--ink-primary); }
+    .num { font-variant-numeric: tabular-nums; }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    /* Dải trạng thái */
+    .strip {
+      position: sticky; top: 0; z-index: 3;
+      background: var(--amber); color: var(--ink-on-amber);
+    }
+    .strip-inner {
+      max-width: 560px; margin: 0 auto; padding: 8px 16px; min-height: 52px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      font: 600 13px/1.3 var(--font);
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px; flex: none;
+      padding: 4px 10px; border-radius: 9999px;
+      background: var(--surface-raised); color: var(--ink-on-amber);
+    }
+    .badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--state-open); }
+    .badge.closed { background: var(--state-closed-soft); color: var(--state-closed); }
+    .badge.closed .dot { background: var(--state-closed); }
+    .remaining { font-weight: 500; text-align: center; }
+    .remaining.low { font-weight: 800; }
+    .held-link {
+      min-height: var(--tap); padding: 0 4px; border: 0; background: transparent; color: var(--ink-on-amber);
+      font: 600 13px/1.3 var(--font); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+    }
+    .skeleton-text {
+      display: inline-block; width: 72px; height: 12px; border-radius: 8px; background: rgba(255, 255, 255, .6);
+    }
+
+    /* Thanh tab */
+    .tabs { background: var(--surface-sunken); border-bottom: 1px solid var(--border-hairline); }
+    .tabs-inner { max-width: 560px; margin: 0 auto; display: flex; }
+    .tab {
+      flex: 1; min-height: var(--tap); border: 0; background: transparent; color: var(--ink-secondary);
+      font: 600 14px/1.3 var(--font); cursor: pointer;
+    }
+    .tab[aria-selected="true"] {
+      background: var(--surface-raised); color: var(--tea); box-shadow: inset 0 -3px 0 var(--amber-strong);
+    }
+
+    .gear {
+      width: 56px; flex: none; min-height: var(--tap); border: 0; background: transparent; color: var(--ink-secondary);
+      font: 600 20px/1 var(--font); cursor: pointer;
+    }
+    .tab-list { flex: 1; display: flex; min-width: 0; }
+    .gear.on {
+      background: var(--surface-raised); color: var(--tea); box-shadow: inset 0 -3px 0 var(--amber-strong);
+    }
+
+    /* Mục Cài đặt */
+    input[type=password], input.setting-input {
+      width: 100%; min-height: var(--tap); padding: 10px 12px;
+      background: var(--surface-raised); color: var(--ink-primary);
+      border: 1.5px solid var(--border-hairline); border-radius: 8px; outline: none;
+      font-variant-numeric: tabular-nums; -webkit-appearance: none; appearance: none;
+    }
+    input[type=password]:focus, input.setting-input:focus { border-color: var(--amber-strong); }
+    .setting-row { display: flex; gap: 8px; align-items: center; }
+    .setting-row input { flex: 1; min-width: 0; }
+    .setting-row .button { flex: none; padding: 0 20px; }
+    .saved-note { margin: 0; color: var(--state-open); font: 600 13px/1.4 var(--font); }
+    .settings-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .settings-head h1 { margin: 0; font: 700 22px/1.25 var(--font); }
+    .product-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      min-height: var(--tap); padding-top: 12px; border-top: 1px solid var(--border-hairline);
+    }
+    .product-row:first-of-type { border-top: 0; padding-top: 0; }
+    .product-name { min-width: 0; overflow-wrap: anywhere; }
+    .switch { position: relative; display: inline-flex; align-items: center; gap: 8px; flex: none; cursor: pointer; }
+    .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .switch .track {
+      position: relative; width: 52px; height: 32px; border-radius: 9999px; background: #D7CCC8;
+    }
+    .switch .track::after {
+      content: ''; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%;
+      background: #FFFFFF; box-shadow: 0 1px 2px rgba(62, 39, 35, .3);
+    }
+    .switch input:checked + .track { background: var(--state-open); }
+    .switch input:checked + .track::after { left: 24px; }
+    .switch input:focus-visible + .track { outline: 2px solid var(--tea); outline-offset: 2px; }
+    .switch input:disabled + .track { opacity: .5; }
+    .switch .state { min-width: 64px; font: 600 13px/1.3 var(--font); color: var(--ink-secondary); }
+
+    main { max-width: 560px; margin: 0 auto; padding: 16px 16px calc(var(--bottom-bar) + 32px); }
+    main.no-bar { padding-bottom: 32px; }
+    .stack { display: flex; flex-direction: column; gap: 24px; }
+
+    /* Thẻ nhóm ô */
+    .card {
+      background: var(--surface-raised); border: 1px solid var(--border-hairline); border-radius: 14px;
+      padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0;
+    }
+    .card h2, .card-title { margin: 0; font: 600 14px/1.3 var(--font); color: var(--tea); }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label, .label { font: 600 14px/1.3 var(--font); color: var(--ink-primary); }
+    input[type=text], input[type=tel], input[type=url], select, textarea {
+      width: 100%; min-height: var(--tap); padding: 10px 12px;
+      background: var(--surface-raised); color: var(--ink-primary);
+      border: 1.5px solid var(--border-hairline); border-radius: 8px; outline: none;
+      -webkit-appearance: none; appearance: none;
+    }
+    select {
+      padding-right: 36px;
+      background-image: linear-gradient(45deg, transparent 50%, #6D4C41 50%), linear-gradient(135deg, #6D4C41 50%, transparent 50%);
+      background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%;
+      background-size: 6px 6px; background-repeat: no-repeat;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    input::placeholder, textarea::placeholder { color: var(--ink-secondary); opacity: 1; }
+    input:focus, select:focus, textarea:focus { border-color: var(--amber-strong); }
+    [aria-invalid="true"] { border-color: var(--state-closed) !important; }
+    .field-error { margin: 0; color: var(--state-closed); font: 500 13px/1.4 var(--font); }
+    .hint { margin: 0; color: var(--ink-secondary); font: 500 13px/1.4 var(--font); }
+
+    /* Chip lựa chọn: radio và checkbox thật, chỉ đổi cách hiện */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { position: relative; display: inline-flex; cursor: pointer; }
+    .chip input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .chip span {
+      display: inline-flex; align-items: center; min-height: var(--tap); padding: 8px 16px;
+      border: 1.5px solid var(--border-hairline); border-radius: 9999px;
+      background: var(--surface-raised); color: var(--ink-primary);
+      font: 600 14px/1.3 var(--font);
+    }
+    .chip input:checked + span { background: var(--amber); border-color: var(--amber); color: var(--ink-on-amber); }
+    .chip input:focus-visible + span { outline: 2px solid var(--tea); outline-offset: 2px; }
+
+    /* Dòng món */
+    .line { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; border-top: 1px solid var(--border-hairline); }
+    .line:first-child { padding-top: 0; border-top: 0; }
+    .line-top { display: flex; gap: 8px; align-items: center; }
+    .line-top select { flex: 1; min-width: 0; }
+    .line-bottom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .stepper { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+    .round {
+      width: 40px; height: 40px; border-radius: 50%; border: 0; flex: none;
+      background: var(--surface-sunken); color: var(--tea); font: 700 20px/1 var(--font); cursor: pointer;
+    }
+    .round:disabled { color: var(--ink-secondary); opacity: .5; cursor: default; }
+    .qty {
+      width: 48px; min-height: 40px; padding: 0; text-align: center; border: 0; background: transparent;
+      color: var(--ink-primary); font: 700 18px/1 var(--font); font-variant-numeric: tabular-nums;
+      -moz-appearance: textfield;
+    }
+    .qty::-webkit-outer-spin-button, .qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .icon-button {
+      width: var(--tap); height: var(--tap); flex: none; border: 0; border-radius: 8px;
+      background: transparent; color: var(--ink-secondary); cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .add-line {
+      min-height: var(--tap); border: 1.5px dashed var(--tea); border-radius: 9999px;
+      background: var(--surface-raised); color: var(--tea); font: 600 14px/1.3 var(--font); cursor: pointer;
+    }
+
+    /* Nút */
+    .button {
+      min-height: var(--tap); padding: 0 24px; border-radius: 9999px; cursor: pointer;
+      font: 700 15px/1.2 var(--font); white-space: nowrap;
+    }
+    .button.primary { background: var(--tea); color: #FFFFFF; border: 1.5px solid var(--tea); }
+    .button.secondary { background: var(--surface-raised); color: var(--tea); border: 1.5px solid var(--tea); }
+    .button:disabled { background: #BCAAA4; border-color: #BCAAA4; color: #FFFFFF; cursor: default; }
+    .link-button {
+      min-height: var(--tap); padding: 0 4px; border: 0; background: transparent; color: var(--tea);
+      font: 600 14px/1.3 var(--font); cursor: pointer;
+    }
+
+    /* Thanh đáy */
+    .bottom-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 3;
+      background: var(--surface-raised); border-top: 1px solid var(--border-hairline);
+      box-shadow: 0 -6px 16px rgba(62, 39, 35, .08);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .bottom-inner { max-width: 560px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .bottom-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .total-label { display: block; color: var(--ink-secondary); font: 500 13px/1.4 var(--font); }
+    .total-amount { display: block; font: 700 24px/1.1 var(--font); font-variant-numeric: tabular-nums; }
+    .total-sub { display: block; color: var(--ink-secondary); font: 500 13px/1.4 var(--font); font-variant-numeric: tabular-nums; }
+    .bar-message {
+      margin: 0; padding: 8px 12px; border-radius: 8px;
+      background: var(--state-closed-soft); color: var(--state-closed); font: 600 14px/1.4 var(--font);
+    }
+    .bottom-row .button { flex: none; }
+    .bottom-row .button.wide { flex: 1; }
+
+    /* Màn hình đã lưu */
+    .saved { align-items: center; text-align: center; gap: 12px; padding: 24px 16px; }
+    .saved-title { color: var(--ink-secondary); font: 600 14px/1.3 var(--font); }
+    .saved-code { font: 800 40px/1.1 var(--font); letter-spacing: .02em; }
+    .saved-total { font: 700 20px/1.3 var(--font); font-variant-numeric: tabular-nums; }
+    .flag {
+      display: inline-block; padding: 6px 12px; border-radius: 9999px; color: var(--ink-primary);
+      font: 600 13px/1.4 var(--font);
+    }
+    .flag.call { background: var(--flag-call); }
+    .flag.transfer { background: var(--flag-transfer); }
+    .qr {
+      display: block; width: 100%; max-width: 280px; margin: 0 auto; border-radius: 14px;
+      background: #FFFFFF; border: 8px solid #FFFFFF; outline: 1px solid var(--border-hairline);
+    }
+    .bank { width: 100%; text-align: left; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 15px; }
+    .bank dt { color: var(--ink-secondary); }
+    .bank dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+    .notice { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--surface-sunken); color: var(--ink-primary); font-size: 14px; }
+    .notice.error { background: var(--state-closed-soft); color: var(--state-closed); }
+    .saved a { color: var(--tea); font-weight: 600; }
+
+    /* Danh sách */
+    .list-head { display: flex; flex-direction: column; gap: 12px; }
+    .updated-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-secondary); font: 500 13px/1.4 var(--font); }
+    .list-body { display: flex; flex-direction: column; gap: 12px; }
+    .prep-card { display: flex; flex-direction: row; align-items: flex-start; gap: 12px; }
+    .order-row { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border-hairline); }
+    .order-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .code-link {
+      min-height: var(--tap); padding: 0 4px; border: 0; background: transparent; color: var(--tea); cursor: pointer;
+      font: 600 15px/1.3 var(--font); font-variant-numeric: tabular-nums; text-decoration: underline; text-underline-offset: 3px;
+    }
+    .order-fields { margin: 0; }
+    .status-tag {
+      display: inline-block; align-self: flex-start; padding: 2px 10px; border-radius: 9999px;
+      background: var(--surface-sunken); color: var(--tea); font: 600 13px/1.4 var(--font);
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+    .button.small { padding: 0 16px; font-size: 14px; }
+    .button.danger { background: var(--surface-raised); color: var(--state-closed); border: 1.5px solid var(--state-closed); }
+    .confirm {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-radius: 8px;
+      background: var(--state-closed-soft); color: var(--ink-primary);
+    }
+    .confirm p { flex-basis: 100%; margin: 0; font-weight: 600; }
+    .today-big { display: flex; flex-wrap: wrap; gap: 16px 24px; }
+    .today-big div { display: flex; flex-direction: column; }
+    .today-big strong { font: 700 24px/1.1 var(--font); font-variant-numeric: tabular-nums; }
+    .prep-qty { min-width: 48px; color: var(--tea); font: 800 28px/1 var(--font); font-variant-numeric: tabular-nums; }
+    .prep-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .prep-name { font: 600 15px/1.4 var(--font); overflow-wrap: anywhere; }
+    .meta { color: var(--ink-secondary); font: 500 13px/1.4 var(--font); overflow-wrap: anywhere; }
+    .entry { display: flex; flex-direction: column; gap: 2px; padding-top: 12px; border-top: 1px solid var(--border-hairline); overflow-wrap: anywhere; }
+    .entry-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+    .entry-due { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .entry a, .card a { color: var(--tea); font-weight: 600; }
+    .tel { display: inline-flex; align-items: center; min-height: var(--tap); }
+    .map-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .map-links a {
+      display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 16px; border-radius: 9999px;
+      border: 1.5px solid var(--tea); color: var(--tea); text-decoration: none; font: 600 14px/1.3 var(--font);
+    }
+    .group-total { padding-top: 12px; border-top: 1px solid var(--border-hairline); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .empty { margin: 0; padding: 24px 16px; text-align: center; color: var(--ink-secondary); }
+    .skeleton { height: 72px; border-radius: 14px; background: var(--skeleton); }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="strip" aria-label="Trạng thái nhận đơn">
+    <div class="strip-inner">
+      <span id="open-badge" class="badge"><span class="dot" aria-hidden="true"></span><span id="open-text">Đang mở cửa</span></span>
+      <span id="remaining" class="remaining num" aria-live="polite"><span class="skeleton-text"></span></span>
+      <button id="held-link" class="held-link num" type="button">…</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Chọn màn hình">
+    <div class="tabs-inner">
+      <div class="tab-list" role="tablist">
+        <button id="tab-entry" class="tab" type="button" role="tab" aria-controls="panel-entry" aria-selected="true">Nhập đơn</button>
+        <button id="tab-lists" class="tab" type="button" role="tab" aria-controls="panel-lists" aria-selected="false">Danh sách</button>
+      </div>
+      <button id="open-settings" class="gear" type="button" aria-label="Cài đặt">⚙</button>
+    </div>
+  </nav>
+
+  <main id="main">
+    <!-- Tab Nhập đơn -->
+    <section id="panel-entry" role="tabpanel" aria-labelledby="tab-entry">
+      <form id="order-form" class="stack" novalidate>
+        <section class="card" aria-labelledby="card-customer">
+          <h2 id="card-customer">Khách</h2>
+          <div class="field">
+            <label for="name">Tên khách</label>
+            <input id="name" type="text" autocomplete="off" maxlength="100" aria-describedby="name-error">
+            <p id="name-error" class="field-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="phone">Số điện thoại</label>
+            <input id="phone" type="tel" inputmode="tel" autocomplete="off" aria-describedby="phone-error">
+            <p id="phone-error" class="field-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="contact">Link Facebook hoặc Zalo</label>
+            <input id="contact" type="url" inputmode="url" autocomplete="off" maxlength="300">
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="card-items">
+          <h2 id="card-items">Món</h2>
+          <div id="lines"></div>
+          <button id="add-line" class="add-line" type="button">+ Thêm món</button>
+        </section>
+
+        <section class="card" aria-labelledby="card-delivery">
+          <h2 id="card-delivery">Nhận hàng</h2>
+          <div class="chips" role="radiogroup" aria-labelledby="card-delivery">
+            <label class="chip"><input type="radio" name="delivery" value="giao" checked><span>Giao tận nơi</span></label>
+            <label class="chip"><input type="radio" name="delivery" value="tu_lay"><span>Tự đến lấy</span></label>
+          </div>
+          <div id="delivery-fields" class="stack" style="gap:12px">
+            <div class="field">
+              <span id="zone-label" class="label">Khu vực</span>
+              <div id="zones" class="chips" role="radiogroup" aria-labelledby="zone-label" aria-describedby="zones-error" tabindex="-1"></div>
+              <p id="zones-error" class="field-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="address">Địa chỉ</label>
+              <input id="address" type="text" autocomplete="off" maxlength="300" aria-describedby="address-error">
+              <p id="address-error" class="field-error" hidden></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="card-payment">
+          <h2 id="card-payment">Thanh toán</h2>
+          <div class="chips" role="radiogroup" aria-labelledby="card-payment">
+            <label class="chip"><input type="radio" name="payment" value="cod" checked><span>Tiền mặt</span></label>
+            <label class="chip"><input type="radio" name="payment" value="chuyen_khoan"><span>Chuyển khoản</span></label>
+          </div>
+          <p id="transfer-hint" class="hint" hidden>Sau khi lưu sẽ hiện mã QR và thông tin chuyển khoản để gửi cho khách.</p>
+        </section>
+
+        <section class="card" aria-labelledby="card-note">
+          <h2 id="card-note">Ghi chú</h2>
+          <div class="field">
+            <label for="note" class="visually-hidden">Ghi chú của khách</label>
+            <textarea id="note" maxlength="500" placeholder="Ví dụ: ít đá, gọi trước khi giao"></textarea>
+          </div>
+          <div class="chips">
+            <label class="chip"><input id="needs-call" type="checkbox"><span>Đơn này cần gọi xác nhận</span></label>
+          </div>
+        </section>
+      </form>
+
+      <section id="result" class="card saved" hidden aria-live="polite">
+        <div class="saved-title">Đã lưu đơn</div>
+        <div id="result-code" class="saved-code" tabindex="-1"></div>
+        <div id="result-total" class="saved-total"></div>
+        <span id="result-call" class="flag call" hidden></span>
+        <span id="result-transfer-flag" class="flag transfer" hidden>Chờ chuyển khoản</span>
+        <div id="transfer" class="stack" style="gap:12px;width:100%" hidden>
+          <img id="transfer-qr" class="qr" alt="Mã QR chuyển khoản">
+          <p id="transfer-qr-error" class="notice error" hidden role="alert">Không tải được ảnh QR. Gửi cho khách thông tin bên dưới để chuyển tay.</p>
+          <dl class="bank">
+            <dt>Ngân hàng</dt><dd id="transfer-bank"></dd>
+            <dt>Số tài khoản</dt><dd id="transfer-account" class="num"></dd>
+            <dt>Tên tài khoản</dt><dd id="transfer-account-name"></dd>
+            <dt>Số tiền</dt><dd id="transfer-amount" class="num"></dd>
+            <dt>Nội dung</dt><dd id="transfer-content"></dd>
+          </dl>
+          <a id="transfer-link" target="_blank" rel="noopener">Mở ảnh QR để gửi cho khách</a>
+        </div>
+        <p id="transfer-missing" class="notice" hidden>Chưa có tài khoản nhận tiền trong tab Cấu hình nên chưa có QR.</p>
+        <p id="result-message" class="notice" hidden role="status" tabindex="-1"></p>
+        <button id="cancel-saved" class="button small danger" type="button" hidden>Huỷ đơn này</button>
+        <div id="result-cancel-box" class="confirm" hidden></div>
+      </section>
+    </section>
+
+    <!-- Tab Danh sách -->
+    <section id="panel-lists" role="tabpanel" aria-labelledby="tab-lists" hidden>
+      <div id="lists-main">
+      <div class="list-head">
+        <div class="chips" role="radiogroup" aria-label="Chọn danh sách">
+          <label class="chip"><input id="view-prep" type="radio" name="list-view" value="prep" checked><span id="count-prep">Chuẩn bị</span></label>
+          <label class="chip"><input id="view-delivery" type="radio" name="list-view" value="delivery"><span id="count-delivery">Giao</span></label>
+          <label class="chip"><input id="view-held" type="radio" name="list-view" value="held"><span id="count-held">Đang chờ</span></label>
+        </div>
+        <div class="updated-row">
+          <span id="updated-at" aria-live="polite">Đang tải…</span>
+          <button id="refresh" class="link-button" type="button">Làm mới</button>
+        </div>
+      </div>
+      <p id="list-message" class="notice" hidden role="status" tabindex="-1" style="margin-top:12px"></p>
+      <div id="lists" class="list-body" aria-live="polite" style="margin-top:12px"></div>
+      </div>
+
+      <!-- Chi tiết một đơn: một lớp, Đóng là về đúng mục đang xem -->
+      <section id="order-detail" class="card" aria-labelledby="order-detail-title" hidden>
+        <div class="settings-head">
+          <h2 id="order-detail-title" tabindex="-1">Chi tiết đơn</h2>
+          <button id="order-detail-close" class="button secondary small" type="button">Đóng</button>
+        </div>
+        <p id="order-detail-message" class="notice" hidden role="status" tabindex="-1"></p>
+        <div id="order-detail-body"></div>
+      </section>
+    </section>
+    <!-- Mục Cài đặt: mật khẩu chỉ giữ trong bộ nhớ trang, đóng trang là phải nhập lại -->
+    <section id="panel-settings" aria-label="Cài đặt" hidden>
+      <div id="settings-login" class="card">
+        <h2>Cài đặt dành cho quản lý</h2>
+        <div class="field">
+          <label for="manager-password">Mật khẩu quản lý</label>
+          <input id="manager-password" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="manager-password-error">
+          <p id="manager-password-error" class="field-error" hidden role="alert"></p>
+        </div>
+        <button id="manager-unlock" class="button primary" type="button">Mở cài đặt</button>
+      </div>
+
+      <div id="settings-body" class="stack" hidden>
+        <div class="settings-head">
+          <h1>Cài đặt</h1>
+          <button id="manager-lock" class="button secondary" type="button">Khoá</button>
+        </div>
+        <p id="settings-error" class="notice error" hidden role="alert"></p>
+
+        <section class="card" aria-labelledby="today-title">
+          <div class="settings-head">
+            <h2 id="today-title">Hôm nay</h2>
+            <button id="today-refresh" class="link-button" type="button">Làm mới</button>
+          </div>
+          <div id="today-body" aria-live="polite"></div>
+          <p id="today-updated" class="meta"></p>
+        </section>
+
+        <section class="card" aria-labelledby="setting-open-title">
+          <h2 id="setting-open-title">Nhận đơn</h2>
+          <div class="chips" role="radiogroup" aria-labelledby="setting-open-title">
+            <label class="chip"><input type="radio" name="setting-open" value="open"><span>Mở cửa</span></label>
+            <label class="chip"><input type="radio" name="setting-open" value="closed"><span>Đóng cửa</span></label>
+          </div>
+          <p class="hint">Chọn Đóng cửa để tạm dừng mọi kênh đặt hàng.</p>
+          <p id="saved-orders_open" class="saved-note" hidden aria-live="polite">Đã lưu</p>
+          <p id="error-orders_open" class="field-error" hidden></p>
+        </section>
+
+        <section class="card" aria-labelledby="setting-limits-title">
+          <h2 id="setting-limits-title">Giới hạn</h2>
+          <div id="setting-limits" class="stack" style="gap:16px"></div>
+        </section>
+
+        <section class="card" aria-labelledby="setting-fees-title">
+          <h2 id="setting-fees-title">Phí ship</h2>
+          <div id="setting-fees" class="stack" style="gap:16px"></div>
+        </section>
+
+        <section class="card" aria-labelledby="setting-products-title">
+          <h2 id="setting-products-title">Món đang bán</h2>
+          <p class="hint">Tắt để tạm ngừng bán món đó trên trang bán hàng và trang nhập đơn. Giá và món mới sửa trong tab Món của Sheet.</p>
+          <div id="setting-products"></div>
+          <p id="error-product" class="field-error" hidden></p>
+        </section>
+
+        <p id="backup-form-hint" class="notice" hidden>Nếu đang dùng form dự phòng, chạy lại setupBackupForm để cập nhật.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Thanh đáy đứng cuối để thứ tự focus theo thứ tự đọc -->
+  <footer id="bottom-bar" class="bottom-bar">
+    <div class="bottom-inner">
+      <p id="error" class="bar-message" hidden role="alert"></p>
+      <p id="closed" class="bar-message" hidden>Đang đóng cửa, chưa nhận đơn.</p>
+      <div id="bar-entry" class="bottom-row">
+        <div>
+          <span class="total-label">Tổng</span>
+          <span id="total" class="total-amount">0đ</span>
+          <span id="total-sub" class="total-sub"></span>
+        </div>
+        <button id="submit" class="button primary" type="submit" form="order-form">Lưu đơn</button>
+      </div>
+      <div id="bar-saved" class="bottom-row" hidden>
+        <button id="next-order" class="button primary wide" type="button">Nhập đơn tiếp theo</button>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    var CONFIG = <?!= configJson ?>;
+    var STATUS = <?!= statusJson ?>;
+    var UI = <?!= uiJson ?>;
+    var KEY = <?!= keyJson ?>;
+    var ZONE_LABELS = { trong_2km: 'Trong 2km', den_10km: 'Đến 10km' };
+    var DENIED_TEXT = 'Link này không còn dùng được. Hỏi quản lý link mới.';
+    var STORAGE_TAB = 'storeops.staff.tab';
+    var STORAGE_LIST = 'storeops.staff.list';
+    var submissionId = newSubmissionId();
+    var latestListsRequest = 0;
+    var listsData = null;
+    var saving = false;
+    var lastStatus = STATUS;
+    var savedEntry = null;
+
+    function byId(id) { return document.getElementById(id); }
+
+    function money(value) {
+      return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + 'đ';
+    }
+
+    function unit() {
+      return (lastStatus && lastStatus.unit_label) || 'phần';
+    }
+
+    function newSubmissionId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'staff-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    }
+
+    function remember(key, value) {
+      try { window.localStorage.setItem(key, value); } catch (err) { /* trình duyệt chặn lưu: bỏ qua */ }
+    }
+
+    function recall(key) {
+      try { return window.localStorage.getItem(key); } catch (err) { return null; }
+    }
+
+    function addNode(parent, tag, text, className) {
+      var el = document.createElement(tag);
+      if (text !== undefined && text !== null) el.textContent = text;
+      if (className) el.className = className;
+      parent.appendChild(el);
+      return el;
+    }
+
+    function addLink(parent, href, text, newTab) {
+      var a = addNode(parent, 'a', text);
+      a.href = href;
+      if (newTab) {
+        a.target = '_blank';
+        a.rel = 'noopener';
+      }
+      return a;
+    }
+
+    function option(value, text) {
+      var el = document.createElement('option');
+      el.value = value;
+      el.textContent = text;
+      return el;
+    }
+
+    /** Chip là radio hoặc checkbox thật bọc trong nhãn, để đọc màn hình và bàn phím vẫn dùng được. */
+    function chip(type, name, value, text, checked) {
+      var label = document.createElement('label');
+      label.className = 'chip';
+      var input = document.createElement('input');
+      input.type = type;
+      if (name) input.name = name;
+      input.value = value;
+      input.checked = Boolean(checked);
+      input.defaultChecked = Boolean(checked);
+      label.appendChild(input);
+      addNode(label, 'span', text);
+      return label;
+    }
+
+    /* ---------- Dải trạng thái ---------- */
+
+    function renderStatus(status) {
+      if (!status) return;
+      lastStatus = status;
+      var open = status.orders_open === true;
+      byId('open-badge').className = open ? 'badge' : 'badge closed';
+      byId('open-text').textContent = open ? 'Đang mở cửa' : 'Đang đóng cửa';
+      var remaining = byId('remaining');
+      remaining.textContent = 'Còn ' + status.remaining_cups + ' ' + unit();
+      remaining.className = status.low_stock ? 'remaining num low' : 'remaining num';
+      byId('held-link').textContent = status.held_count + ' đơn đang chờ';
+      byId('closed').hidden = open;
+      updateTotal();
+      setBusy(saving);
+    }
+
+    /* ---------- Tab ---------- */
+
+    function showTab(name) {
+      var lists = name === 'lists';
+      var settings = name === 'settings';
+      byId('tab-entry').setAttribute('aria-selected', String(name === 'entry'));
+      byId('tab-lists').setAttribute('aria-selected', String(lists));
+      byId('open-settings').className = settings ? 'gear on' : 'gear';
+      byId('panel-entry').hidden = name !== 'entry';
+      byId('panel-lists').hidden = !lists;
+      byId('panel-settings').hidden = !settings;
+      byId('bottom-bar').hidden = name !== 'entry';
+      byId('main').className = name === 'entry' ? '' : 'no-bar';
+      // Không nhớ mục Cài đặt: mở lại trang luôn về Nhập đơn hoặc Danh sách.
+      if (!settings) remember(STORAGE_TAB, name);
+    }
+
+    function showListView(view) {
+      var input = byId('view-' + view);
+      if (!input) return;
+      if (detailCode) closeOrderDetail();
+      input.checked = true;
+      remember(STORAGE_LIST, view);
+      renderLists();
+    }
+
+    /* ---------- Dòng món ---------- */
+
+    function lineCount() {
+      return byId('lines').children.length;
+    }
+
+    function refreshLineButtons() {
+      var many = lineCount() > 1;
+      Array.prototype.forEach.call(document.querySelectorAll('.line'), function (line) {
+        line.querySelector('.remove').hidden = !many;
+        var qty = Number(line.querySelector('.qty').value);
+        line.querySelector('.minus').disabled = !(qty > 1);
+      });
+    }
+
+    function addLine() {
+      var line = document.createElement('div');
+      line.className = 'line';
+      var number = lineCount() + 1;
+
+      var top = addNode(line, 'div', null, 'line-top');
+      var product = document.createElement('select');
+      product.className = 'product';
+      product.setAttribute('aria-label', 'Món ' + number);
+      CONFIG.products.forEach(function (p) {
+        product.appendChild(option(p.product_id, p.name + ' · ' + money(p.price)));
+      });
+      top.appendChild(product);
+
+      var remove = addNode(top, 'button', null, 'icon-button remove');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', 'Xoá món ' + number);
+      var svgNs = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('width', '22');
+      svg.setAttribute('height', '22');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('aria-hidden', 'true');
+      var path = document.createElementNS(svgNs, 'path');
+      path.setAttribute('fill', 'currentColor');
+      path.setAttribute('d', 'M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9zm4 2v8h2v-8h-2zm4 0v8h2v-8h-2z');
+      svg.appendChild(path);
+      remove.appendChild(svg);
+      remove.addEventListener('click', function () {
+        if (lineCount() < 2) return;
+        line.remove();
+        refreshLineButtons();
+        updateTotal();
+      });
+
+      var bottom = addNode(line, 'div', null, 'line-bottom');
+      CONFIG.toppings.forEach(function (t) {
+        var label = chip('checkbox', '', t.topping_id, t.name + (t.price ? ' +' + money(t.price) : ''), false);
+        label.querySelector('input').className = 'topping';
+        bottom.appendChild(label);
+      });
+
+      var stepper = addNode(bottom, 'div', null, 'stepper');
+      var minus = addNode(stepper, 'button', '−', 'round minus');
+      minus.type = 'button';
+      minus.setAttribute('aria-label', 'Bớt một');
+      var qty = document.createElement('input');
+      qty.type = 'number';
+      qty.className = 'qty';
+      qty.min = '1';
+      qty.step = '1';
+      qty.value = '1';
+      qty.inputMode = 'numeric';
+      qty.setAttribute('aria-label', 'Số lượng món ' + number);
+      stepper.appendChild(qty);
+      var plus = addNode(stepper, 'button', '+', 'round plus');
+      plus.type = 'button';
+      plus.setAttribute('aria-label', 'Thêm một');
+
+      function step(delta) {
+        var current = Number(qty.value);
+        var next = (Number.isInteger(current) && current > 0 ? current : 1) + delta;
+        qty.value = String(Math.max(1, next));
+        refreshLineButtons();
+        updateTotal();
+      }
+      minus.addEventListener('click', function () { step(-1); });
+      plus.addEventListener('click', function () { step(1); });
+
+      byId('lines').appendChild(line);
+      refreshLineButtons();
+      updateTotal();
+    }
+
+    function radioValue(name) {
+      var checked = document.querySelector('input[name=' + name + ']:checked');
+      return checked ? checked.value : '';
+    }
+
+    function readItems() {
+      return Array.prototype.map.call(document.querySelectorAll('.line'), function (line) {
+        return {
+          product_id: line.querySelector('.product').value,
+          quantity: Number(line.querySelector('.qty').value),
+          toppings: Array.prototype.map.call(line.querySelectorAll('.topping:checked'), function (box) {
+            return box.value;
+          })
+        };
+      });
+    }
+
+    function zoneLabel(zone) {
+      return ZONE_LABELS[zone] + ' · ' + money(CONFIG.shipping_fees[zone] || 0);
+    }
+
+    /**
+     * Cập nhật menu, phí ship và đơn vị sau khi quản lý lưu cài đặt, để tổng tiền và lựa chọn không cũ.
+     * Món đang chọn được giữ nếu vẫn còn bán; không thì chọn món đầu tiên.
+     */
+    function applyStaffConfig(config) {
+      if (!config) return;
+      CONFIG.products = config.products;
+      CONFIG.toppings = config.toppings;
+      CONFIG.shipping_fees = config.shipping_fees;
+      if (config.unit_label && lastStatus) lastStatus.unit_label = config.unit_label;
+      Array.prototype.forEach.call(document.querySelectorAll('.product'), function (select) {
+        var current = select.value;
+        select.textContent = '';
+        CONFIG.products.forEach(function (p) {
+          select.appendChild(option(p.product_id, p.name + ' · ' + money(p.price)));
+        });
+        if (CONFIG.products.some(function (p) { return p.product_id === current; })) {
+          select.value = current;
+        } else if (CONFIG.products.length) {
+          select.value = CONFIG.products[0].product_id;
+        }
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('input[name=zone]'), function (radio) {
+        radio.parentNode.querySelector('span').textContent = zoneLabel(radio.value);
+      });
+      updateTotal();
+    }
+
+    function priceOf(list, idField, id) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i][idField] === id) return list[i].price;
+      }
+      return 0;
+    }
+
+    /** Chỉ để xem trước. Số tiền lưu vào đơn do server tính. */
+    function updateTotal() {
+      var total = 0;
+      var count = 0;
+      readItems().forEach(function (item) {
+        var unitPrice = priceOf(CONFIG.products, 'product_id', item.product_id);
+        item.toppings.forEach(function (id) { unitPrice += priceOf(CONFIG.toppings, 'topping_id', id); });
+        var quantity = Number.isInteger(item.quantity) && item.quantity > 0 ? item.quantity : 0;
+        total += unitPrice * quantity;
+        count += quantity;
+      });
+      var isDelivery = radioValue('delivery') === 'giao';
+      var fee = CONFIG.shipping_fees[isDelivery ? radioValue('zone') : 'tu_lay'] || 0;
+      total += fee;
+      byId('total').textContent = money(total);
+      var shipText = !isDelivery ? 'tự lấy' : radioValue('zone') ? 'ship ' + money(fee) : 'chưa chọn khu vực';
+      byId('total-sub').textContent = count + ' ' + unit() + ' · ' + shipText;
+      byId('delivery-fields').hidden = !isDelivery;
+      byId('transfer-hint').hidden = radioValue('payment') !== 'chuyen_khoan';
+    }
+
+    /* ---------- Kiểm tra và lưu ---------- */
+
+    function setFieldError(id, text) {
+      var input = byId(id);
+      var error = byId(id + '-error');
+      error.textContent = text || '';
+      error.hidden = !text;
+      if (text) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+    }
+
+    /** Cùng quy tắc với normalizePhone trong Logic.gs, để trang không chặn số mà server nhận. */
+    function phoneLooksValid(raw) {
+      var digits = String(raw).trim().replace(/^'/, '').replace(/[\s.\-()]/g, '');
+      if (/^\+?84\d{9}$/.test(digits)) digits = '0' + digits.slice(-9);
+      if (/^[35789]\d{8}$/.test(digits)) digits = '0' + digits;
+      return /^0[35789]\d{8}$/.test(digits);
+    }
+
+    /** Lỗi gắn với từng ô và cuộn tới ô sai đầu tiên. Server vẫn kiểm tra lại mọi thứ. */
+    function checkFields() {
+      var problems = [];
+      var name = byId('name').value.trim();
+      var phone = byId('phone').value.trim();
+      var needsAddress = radioValue('delivery') === 'giao';
+      setFieldError('name', name ? '' : 'Nhập tên khách.');
+      if (!name) problems.push('name');
+      var phoneError = !phone ? 'Nhập số điện thoại.' : phoneLooksValid(phone) ? '' : 'Số điện thoại cần 10 số, bắt đầu bằng 0.';
+      setFieldError('phone', phoneError);
+      if (phoneError) problems.push('phone');
+      // Không chọn sẵn khu vực, để không tính nhầm phí ship khi quên chọn.
+      var zoneError = needsAddress && !radioValue('zone') ? 'Chọn khu vực giao.' : '';
+      setFieldError('zones', zoneError);
+      if (zoneError) problems.push('zones');
+      var addressError = needsAddress && !byId('address').value.trim() ? 'Nhập địa chỉ giao.' : '';
+      setFieldError('address', addressError);
+      if (addressError) problems.push('address');
+      if (problems.length) {
+        var first = byId(problems[0]);
+        first.scrollIntoView({ block: 'center' });
+        first.focus({ preventScroll: true });
+      }
+      return problems.length === 0;
+    }
+
+    function showError(text) {
+      byId('error').textContent = text;
+      byId('error').hidden = false;
+    }
+
+    function setBusy(busy) {
+      saving = busy;
+      var closed = lastStatus && lastStatus.orders_open === false;
+      byId('submit').disabled = busy || closed;
+      byId('submit').textContent = busy ? 'Đang lưu…' : 'Lưu đơn';
+    }
+
+    function onSubmit(event) {
+      event.preventDefault();
+      if (saving || (lastStatus && lastStatus.orders_open === false)) return;
+      byId('error').hidden = true;
+      if (!checkFields()) return;
+      setBusy(true);
+      var isDelivery = radioValue('delivery') === 'giao';
+      var paymentMethod = radioValue('payment');
+      google.script.run
+        .withSuccessHandler(function (response) { onResponse(response, paymentMethod, isDelivery ? 'giao' : 'tu_lay'); })
+        .withFailureHandler(function () {
+          // Giữ nguyên submissionId: bấm lại không tạo đơn trùng dù lần trước đã lưu.
+          setBusy(false);
+          showError('Chưa lưu được. Kiểm tra mạng rồi bấm Lưu đơn lần nữa, đơn sẽ không bị trùng.');
+        })
+        .staffSubmit({
+          submission_id: submissionId,
+          name: byId('name').value,
+          phone: byId('phone').value,
+          contact: byId('contact').value,
+          items: readItems(),
+          delivery_method: radioValue('delivery'),
+          zone: isDelivery ? radioValue('zone') : '',
+          address: isDelivery ? byId('address').value : '',
+          payment_method: paymentMethod,
+          note: byId('note').value,
+          needs_call: byId('needs-call').checked
+        }, KEY);
+    }
+
+    /** paymentMethod là cách trả đã gửi đi, không đọc lại ô chọn vì có thể đã đổi trong lúc chờ. */
+    function onResponse(response, paymentMethod, deliveryMethod) {
+      setBusy(false);
+      if (!response || !response.ok) {
+        if (response && response.error_code === 'UNAUTHORIZED') {
+          showError(DENIED_TEXT);
+        } else if (response && response.error_code === 'SERVER_ERROR') {
+          showError('Chưa lưu được vì hệ thống đang lỗi. Bấm Lưu đơn lần nữa, đơn sẽ không bị trùng. Nếu vẫn lỗi, báo quản lý.');
+        } else {
+          showError((response && response.message) || 'Chưa lưu được. Bấm Lưu đơn lần nữa, đơn sẽ không bị trùng.');
+        }
+        if (response && response.error_code === 'SOLD_OUT') loadLists();
+        return;
+      }
+      byId('result-code').textContent = response.order_code;
+      byId('result-total').textContent = money(response.total) + ' · ' + response.cups + ' ' + unit();
+      byId('result-call').hidden = !response.needs_call;
+      byId('result-call').textContent = 'Cần gọi trước khi làm' + (response.call_reason ? ': ' + response.call_reason : '');
+      var isTransfer = Boolean(response.transfer) || paymentMethod === 'chuyen_khoan';
+      byId('result-transfer-flag').hidden = !isTransfer;
+      showTransfer(response.transfer, isTransfer);
+      // Nhập nhầm thì huỷ ngay ở đây; đơn mới tạo đang ở trạng thái moi.
+      savedEntry = { order_code: response.order_code, status: 'moi', delivery_method: deliveryMethod, from_saved: true };
+      showResultMessage('');
+      byId('cancel-saved').hidden = false;
+      byId('cancel-saved').disabled = false;
+      byId('result-cancel-box').hidden = true;
+      byId('result-cancel-box').textContent = '';
+      byId('order-form').hidden = true;
+      byId('result').hidden = false;
+      byId('bar-entry').hidden = true;
+      byId('bar-saved').hidden = false;
+      window.scrollTo(0, 0);
+      byId('result-code').focus({ preventScroll: true });
+      loadLists();
+    }
+
+    function showTransfer(transfer, isTransferOrder) {
+      byId('transfer').hidden = !transfer;
+      byId('transfer-missing').hidden = Boolean(transfer) || !isTransferOrder;
+      if (!transfer) return;
+      byId('transfer-qr').hidden = false;
+      byId('transfer-qr-error').hidden = true;
+      byId('transfer-qr').src = transfer.qr_url;
+      byId('transfer-bank').textContent = transfer.bank_code;
+      byId('transfer-account').textContent = transfer.bank_account;
+      byId('transfer-account-name').textContent = transfer.bank_account_name;
+      byId('transfer-amount').textContent = money(transfer.amount);
+      byId('transfer-content').textContent = transfer.content;
+      byId('transfer-link').href = transfer.qr_url;
+    }
+
+    function resetForm() {
+      submissionId = newSubmissionId();
+      byId('order-form').reset();
+      byId('lines').textContent = '';
+      addLine();
+      ['name', 'phone', 'zones', 'address'].forEach(function (id) { setFieldError(id, ''); });
+      byId('error').hidden = true;
+      byId('result').hidden = true;
+      savedEntry = null;
+      showResultMessage('');
+      byId('result-cancel-box').hidden = true;
+      byId('result-cancel-box').textContent = '';
+      byId('order-form').hidden = false;
+      byId('bar-entry').hidden = false;
+      byId('bar-saved').hidden = true;
+      updateTotal();
+      window.scrollTo(0, 0);
+      byId('name').focus();
+    }
+
+    /* ---------- Danh sách: gọi thẳng Apps Script, chạy được khi n8n tắt ---------- */
+
+    function telLink(parent, phone) {
+      var box = addNode(parent, 'div');
+      if (/^\d+$/.test(phone)) addLink(box, 'tel:' + phone, phone, false).className = 'tel num';
+      else addNode(box, 'span', phone);
+      return box;
+    }
+
+    function emptyText(target, text) {
+      addNode(target, 'p', text, 'empty');
+    }
+
+    /* ---------- Nút đổi trạng thái trên từng đơn ---------- */
+
+    var ACTION_LABELS = {
+      call_done: 'Đã gọi', paid: 'Đã nhận tiền', start: 'Đang làm', finish: 'Làm xong',
+      deliver: 'Đã giao', bom: 'Bom', cancel: 'Huỷ'
+    };
+    /**
+     * Câu xác nhận lần hai. Thao tác nào cần xác nhận do server gửi trong UI.confirm_actions.
+     * Đã nhận tiền không hoàn tác được trên trang, nên nhắc xem app ngân hàng trước.
+     */
+    var CONFIRM_TEXT = {
+      cancel: { text: 'Huỷ đơn {code}? Suất được trả lại.', button: 'Xác nhận huỷ' },
+      bom: { text: 'Đánh dấu bom đơn {code}? Suất vẫn tính.', button: 'Xác nhận bom' },
+      paid: {
+        text: 'Đã nhận tiền đơn {code}? Mở app ngân hàng kiểm tra đúng số tiền và nội dung là mã đơn trước khi xác nhận.',
+        button: 'Đã kiểm tra, xác nhận'
+      }
+    };
+    var actionBusy = false;
+    var openConfirm = null;
+
+    function needsConfirm(action) {
+      return UI.confirm_actions.indexOf(action) !== -1 && Boolean(CONFIRM_TEXT[action]);
+    }
+
+    function actionLabel(action, entry) {
+      if (action === 'deliver' && entry.delivery_method === 'tu_lay') return 'Đã trao';
+      return ACTION_LABELS[action] || action;
+    }
+
+    function statusTag(entry) {
+      if (entry.status === 'dang_lam') return 'Đang làm';
+      if (entry.status === 'dang_giao') return entry.delivery_method === 'tu_lay' ? 'Chờ khách lấy' : 'Đang giao';
+      return '';
+    }
+
+    function showListMessage(text, isError) {
+      var box = byId('list-message');
+      box.textContent = text || '';
+      box.hidden = !text;
+      box.className = isError ? 'notice error' : 'notice';
+    }
+
+    function renderActions(parent, entry) {
+      if (!entry.actions || !entry.actions.length) return;
+      var row = addNode(parent, 'div', null, 'actions');
+      var confirmBox = addNode(parent, 'div', null, 'confirm');
+      confirmBox.hidden = true;
+      entry.actions.forEach(function (action) {
+        var label = actionLabel(action, entry);
+        var danger = action === 'cancel' || action === 'bom';
+        var button = addNode(row, 'button', label, danger ? 'button small danger' : 'button small secondary');
+        button.type = 'button';
+        button.setAttribute('aria-label', label + ' đơn ' + entry.order_code);
+        button.setAttribute('data-action', action);
+        button.addEventListener('click', function () {
+          if (needsConfirm(action)) showConfirm(confirmBox, entry, action, button);
+          else runAction(entry, action, button);
+        });
+      });
+    }
+
+    var confirmCounter = 0;
+
+    /** Huỷ cần chọn lý do bằng chip; Khác cho ghi một dòng ngắn. */
+    function addCancelReasons(box) {
+      var group = 'cancel-reason-' + (++confirmCounter);
+      var chips = addNode(box, 'div', null, 'chips cancel-reasons');
+      chips.setAttribute('role', 'radiogroup');
+      chips.setAttribute('aria-label', 'Lý do huỷ');
+      UI.cancel_reasons.forEach(function (reason) { chips.appendChild(chip('radio', group, reason, reason, false)); });
+      var other = document.createElement('input');
+      other.type = 'text';
+      other.className = 'setting-input cancel-other';
+      other.maxLength = UI.cancel_other_max;
+      other.placeholder = 'Lý do khác';
+      other.setAttribute('aria-label', 'Lý do khác');
+      other.hidden = true;
+      box.appendChild(other);
+      var error = addNode(box, 'p', null, 'field-error');
+      error.hidden = true;
+      chips.addEventListener('change', function () {
+        other.hidden = radioValue(group) !== 'Khác';
+        error.hidden = true;
+        if (!other.hidden) other.focus();
+      });
+      return function read() {
+        var reason = radioValue(group);
+        var text = !reason ? 'Chọn lý do huỷ.' : reason === 'Khác' && !other.value.trim() ? 'Ghi ngắn lý do huỷ.' : '';
+        error.textContent = text;
+        error.hidden = !text;
+        return text ? null : { cancel_reason: reason, cancel_other: reason === 'Khác' ? other.value : '' };
+      };
+    }
+
+    function closeConfirm() {
+      if (!openConfirm) return;
+      var current = openConfirm;
+      openConfirm = null;
+      current.box.hidden = true;
+      current.box.textContent = '';
+      if (current.opener && current.opener.isConnected) current.opener.focus();
+    }
+
+    function showConfirm(box, entry, action, opener) {
+      if (openConfirm && openConfirm.box !== box) closeConfirm();
+      box.textContent = '';
+      box.hidden = false;
+      openConfirm = { box: box, opener: opener };
+      addNode(box, 'p', CONFIRM_TEXT[action].text.replace('{code}', entry.order_code));
+      var readReason = action === 'cancel' ? addCancelReasons(box) : null;
+      var yes = addNode(box, 'button', CONFIRM_TEXT[action].button, 'button small danger confirm-yes');
+      yes.type = 'button';
+      var no = addNode(box, 'button', 'Thôi', 'button small secondary confirm-no');
+      no.type = 'button';
+      yes.addEventListener('click', function () {
+        var extra = readReason ? readReason() : {};
+        if (extra) runAction(entry, action, yes, extra);
+      });
+      no.addEventListener('click', closeConfirm);
+    }
+
+    /**
+     * Thông báo hiện đúng chỗ người dùng đang xem: màn hình đã lưu, chi tiết đơn, hoặc danh sách.
+     * Đưa focus tới thông báo, vì danh sách vừa vẽ lại làm mất nút đã bấm.
+     */
+    function reportAction(entry, text, isError) {
+      var id = entry.from_saved ? 'result-message' : detailCode === entry.order_code ? 'order-detail-message' : 'list-message';
+      var box = byId(id);
+      box.textContent = text || '';
+      box.hidden = !text;
+      box.className = isError ? 'notice error' : 'notice';
+      if (text) box.focus();
+    }
+
+    /** Màn hình đã lưu: lấy lại trạng thái thật của đơn, ẩn Huỷ đơn này nếu không còn huỷ được. */
+    function refreshSavedEntry(entry) {
+      google.script.run
+        .withSuccessHandler(function (response) {
+          if (savedEntry !== entry || !response || !response.ok) return;
+          entry.status = response.order.status;
+          var canCancel = response.order.actions.indexOf('cancel') !== -1;
+          byId('cancel-saved').hidden = !canCancel;
+          if (!canCancel) {
+            byId('result-cancel-box').hidden = true;
+            byId('result-cancel-box').textContent = '';
+          }
+        })
+        .staffOrderDetail(KEY, entry.order_code);
+    }
+
+    /** Gửi trạng thái trang đang thấy; server từ chối nếu đơn đã đổi. Xong thì làm mới danh sách và dải. */
+    function runAction(entry, action, button, extra) {
+      if (actionBusy) {
+        reportAction(entry, 'Đang lưu thao tác trước, chờ một chút.', true);
+        return;
+      }
+      actionBusy = true;
+      button.disabled = true;
+      reportAction(entry, '');
+      var request = { order_code: entry.order_code, action: action, expected_status: entry.status };
+      if (extra) {
+        Object.keys(extra).forEach(function (field) { request[field] = extra[field]; });
+      }
+      google.script.run
+        .withSuccessHandler(function (response) {
+          actionBusy = false;
+          if (!response || !response.ok) {
+            var text = response && response.error_code === 'UNAUTHORIZED'
+              ? DENIED_TEXT
+              : (response && response.message) || 'Chưa lưu được. Thử lại.';
+            // Mọi lỗi đều mở lại nút, để bấm lại được sau khi đọc thông báo.
+            button.disabled = false;
+            reportAction(entry, text, true);
+            if (entry.from_saved && response && response.error_code === 'STALE') refreshSavedEntry(entry);
+          } else {
+            openConfirm = null;
+            reportAction(entry, action === 'cancel'
+              ? 'Đã huỷ đơn ' + entry.order_code + '.'
+              : 'Đã cập nhật đơn ' + entry.order_code + '.', false);
+            if (entry.from_saved) {
+              byId('cancel-saved').hidden = true;
+              byId('result-cancel-box').hidden = true;
+            }
+          }
+          loadLists();
+          if (detailCode === entry.order_code) loadOrderDetail(entry.order_code);
+        })
+        .withFailureHandler(function () {
+          actionBusy = false;
+          button.disabled = false;
+          reportAction(entry, 'Chưa lưu được. Kiểm tra mạng rồi thử lại.', true);
+        })
+        .staffOrderAction(KEY, request);
+    }
+
+    function showResultMessage(text, isError) {
+      var box = byId('result-message');
+      box.textContent = text || '';
+      box.hidden = !text;
+      box.className = isError ? 'notice error' : 'notice';
+    }
+
+    /* ---------- Chi tiết một đơn ---------- */
+
+    var STATUS_TEXT = { moi: 'Mới', dang_lam: 'Đang làm', xong: 'Xong', huy: 'Đã huỷ', bom: 'Bom' };
+    var detailCode = null;
+    var detailOpener = null;
+    var latestDetailRequest = 0;
+
+    function statusText(entry) {
+      if (entry.status === 'dang_giao') return entry.delivery_method === 'tu_lay' ? 'Chờ khách lấy' : 'Đang giao';
+      return STATUS_TEXT[entry.status] || entry.status;
+    }
+
+    /** Giờ đặt: chỉ giờ nếu là hôm nay, thêm ngày nếu là hôm khác. */
+    function shortTime(createdAt) {
+      var text = String(createdAt || '');
+      if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(text)) return text;
+      var today = listsData && listsData.generated_at ? String(listsData.generated_at).slice(0, 10) : '';
+      var time = text.slice(11, 16);
+      return text.slice(0, 10) === today ? time : text.slice(8, 10) + '/' + text.slice(5, 7) + ' ' + time;
+    }
+
+    /** Mã đơn bấm được để mở chi tiết. */
+    function codeButton(parent, code) {
+      var button = addNode(parent, 'button', code, 'code-link');
+      button.type = 'button';
+      button.setAttribute('aria-label', 'Xem chi tiết đơn ' + code);
+      button.addEventListener('click', function () { openOrderDetail(code, button); });
+      return button;
+    }
+
+    function fieldRow(list, label, value) {
+      if (value === undefined || value === null || value === '') return null;
+      addNode(list, 'dt', label);
+      return addNode(list, 'dd', value);
+    }
+
+    /** Các ô thông tin đơn, dùng chung cho mục Đang chờ và màn hình chi tiết. */
+    /** skipReason: thẻ Đang chờ đã có cờ lý do ở trên, nên không in lại trong bảng. */
+    function renderOrderFields(parent, entry, skipReason) {
+      var list = addNode(parent, 'dl', null, 'bank order-fields');
+      fieldRow(list, 'Giờ đặt', shortTime(entry.created_at));
+      fieldRow(list, 'Tên', entry.name);
+      var phone = entry.phone ? fieldRow(list, 'SĐT', ' ') : null;
+      if (phone) {
+        phone.textContent = '';
+        if (/^\d+$/.test(entry.phone)) addLink(phone, 'tel:' + entry.phone, entry.phone, false).className = 'tel num';
+        else addNode(phone, 'span', entry.phone);
+      }
+      if (entry.contact) {
+        var contact = fieldRow(list, 'Liên hệ', ' ');
+        contact.textContent = '';
+        if (/^https?:\/\//i.test(entry.contact)) addLink(contact, entry.contact, entry.contact, true);
+        else addNode(contact, 'span', entry.contact);
+      }
+      fieldRow(list, 'Món', entry.items_text);
+      fieldRow(list, 'Số lượng', entry.cups + ' ' + unit());
+      fieldRow(list, 'Nhận', entry.delivery_method === 'tu_lay'
+        ? 'Tự đến lấy'
+        : 'Giao tận nơi' + (entry.zone_label ? ' · ' + entry.zone_label : ''));
+      if (entry.delivery_method !== 'tu_lay') fieldRow(list, 'Địa chỉ', entry.address);
+      fieldRow(list, 'Tổng', money(entry.amount));
+      fieldRow(list, 'Trả bằng', entry.payment_method === 'chuyen_khoan'
+        ? 'Chuyển khoản' + (entry.payment_status === 'da_nhan' ? ' · đã nhận tiền' : '')
+        : 'Tiền mặt');
+      if (!skipReason) fieldRow(list, 'Đang chờ', entry.reason);
+      if (entry.call_reason && String(entry.reason || '').indexOf(entry.call_reason) === -1) {
+        fieldRow(list, 'Lý do cần gọi', entry.call_reason);
+      }
+      fieldRow(list, 'Ghi chú', entry.note);
+      return list;
+    }
+
+    function showDetailMessage(text, isError) {
+      var box = byId('order-detail-message');
+      box.textContent = text || '';
+      box.hidden = !text;
+      box.className = isError ? 'notice error' : 'notice';
+    }
+
+    function renderOrderDetail(order) {
+      var body = byId('order-detail-body');
+      body.textContent = '';
+      byId('order-detail-title').textContent = 'Đơn ' + order.order_code;
+      addNode(body, 'span', statusText(order), 'status-tag');
+      renderOrderFields(body, order);
+      if (order.actions.length) renderActions(body, order);
+      else addNode(body, 'p', 'Đơn này không đổi trạng thái được nữa.', 'meta');
+    }
+
+    /** Mở chi tiết: ẩn danh sách, lấy dữ liệu mới nhất của đơn từ server. */
+    function openOrderDetail(code, opener) {
+      detailCode = code;
+      if (opener) detailOpener = opener;
+      showDetailMessage('');
+      byId('lists-main').hidden = true;
+      byId('order-detail').hidden = false;
+      byId('order-detail-title').textContent = 'Đơn ' + code;
+      byId('order-detail-body').textContent = '';
+      addNode(byId('order-detail-body'), 'div', null, 'skeleton');
+      byId('order-detail-title').focus();
+      loadOrderDetail(code);
+    }
+
+    function loadOrderDetail(code) {
+      var requestId = ++latestDetailRequest;
+      google.script.run
+        .withSuccessHandler(function (response) {
+          if (requestId !== latestDetailRequest || detailCode !== code) return;
+          if (!response || !response.ok) {
+            byId('order-detail-body').textContent = '';
+            showDetailMessage(response && response.error_code === 'UNAUTHORIZED'
+              ? DENIED_TEXT
+              : (response && response.message) || 'Chưa lấy được đơn. Đóng rồi mở lại.', true);
+            return;
+          }
+          renderOrderDetail(response.order);
+        })
+        .withFailureHandler(function () {
+          if (requestId !== latestDetailRequest || detailCode !== code) return;
+          byId('order-detail-body').textContent = '';
+          showDetailMessage('Chưa kết nối được. Đóng rồi mở lại để thử.', true);
+        })
+        .staffOrderDetail(KEY, code);
+    }
+
+    /** Đóng chi tiết, về đúng mục đang xem và trả focus về mã đơn đã bấm nếu còn. */
+    function closeOrderDetail() {
+      if (!detailCode) return;
+      var code = detailCode;
+      detailCode = null;
+      latestDetailRequest++;
+      byId('order-detail').hidden = true;
+      byId('lists-main').hidden = false;
+      var target = detailOpener && detailOpener.isConnected ? detailOpener : null;
+      if (!target) {
+        Array.prototype.forEach.call(document.querySelectorAll('.code-link'), function (button) {
+          if (!target && button.textContent === code) target = button;
+        });
+      }
+      detailOpener = null;
+      if (target) target.focus();
+    }
+
+    function renderPrepOrder(parent, entry) {
+      var row = addNode(parent, 'div', null, 'order-row');
+      var head = addNode(row, 'div', null, 'order-head');
+      codeButton(head, entry.order_code);
+      var tag = statusTag(entry);
+      if (tag) addNode(head, 'span', tag, 'status-tag');
+      renderActions(row, entry);
+    }
+
+    function renderPrep(target, data) {
+      var u = unit();
+      data.prep.lines.forEach(function (line) {
+        var card = addNode(target, 'div', null, 'card');
+        var top = addNode(card, 'div', null, 'prep-card');
+        addNode(top, 'div', String(line.cups), 'prep-qty');
+        var main = addNode(top, 'div', null, 'prep-main');
+        addNode(main, 'div', [line.product_name].concat(line.toppings).join(' · '), 'prep-name');
+        line.notes.forEach(function (entry) {
+          addNode(main, 'div', entry.order_code + ': ' + entry.note, 'meta');
+        });
+        if (line.orders) line.orders.forEach(function (entry) { renderPrepOrder(card, entry); });
+        else addNode(main, 'div', line.order_codes.join(', '), 'meta');
+      });
+      data.prep.unparsed.forEach(function (entry) {
+        var card = addNode(target, 'div', null, 'card');
+        var top = addNode(card, 'div', null, 'prep-card');
+        addNode(top, 'div', String(entry.cups), 'prep-qty');
+        var main = addNode(top, 'div', null, 'prep-main');
+        addNode(main, 'div', 'Xem tay ' + entry.order_code + ': ' + entry.items_text, 'prep-name');
+        if (entry.note) addNode(main, 'div', entry.order_code + ': ' + entry.note, 'meta');
+        renderPrepOrder(card, entry);
+      });
+      if (!data.prep.lines.length && !data.prep.unparsed.length) emptyText(target, 'Chưa có đơn cần chuẩn bị.');
+      else addNode(target, 'p', 'Tổng ' + data.prep.total_cups + ' ' + u + '.', 'meta');
+    }
+
+    function renderEntry(parent, entry) {
+      var box = addNode(parent, 'div', null, 'entry');
+      var head = addNode(box, 'div', null, 'entry-head');
+      var who = addNode(head, 'span', null, 'order-head');
+      codeButton(who, entry.order_code);
+      addNode(who, 'span', entry.cups + ' ' + unit());
+      addNode(head, 'span', 'Thu: ' + money(entry.amount_due), 'entry-due');
+      var tag = statusTag(entry);
+      if (tag) addNode(box, 'span', tag, 'status-tag');
+      addNode(box, 'div', entry.name);
+      telLink(box, entry.phone);
+      if (entry.address) addNode(box, 'div', entry.address);
+      addNode(box, 'div', entry.items_text, 'meta');
+      if (entry.note) addNode(box, 'div', 'Ghi chú: ' + entry.note, 'meta');
+      renderActions(box, entry);
+    }
+
+    function renderDelivery(target, data) {
+      data.delivery.zones.forEach(function (zone) {
+        var card = addNode(target, 'div', null, 'card');
+        addNode(card, 'div', zone.label + ' · ' + zone.stops + ' điểm', 'card-title');
+        var links = addNode(card, 'div', null, 'map-links');
+        zone.map_links.forEach(function (link, index) {
+          var text = zone.map_links.length > 1 ? 'Mở bản đồ ' + (index + 1) : 'Mở bản đồ';
+          addLink(links, link.url, text, true).setAttribute('aria-label', text + ': ' + link.order_codes.join(', '));
+        });
+        zone.orders.forEach(function (entry) { renderEntry(card, entry); });
+        addNode(card, 'div', 'Tổng thu nhóm này: ' + money(zone.amount_due_total), 'group-total');
+      });
+      if (data.pickup.orders.length) {
+        var pickup = addNode(target, 'div', null, 'card');
+        addNode(pickup, 'div', 'Tự đến lấy · ' + data.pickup.orders.length + ' đơn', 'card-title');
+        data.pickup.orders.forEach(function (entry) { renderEntry(pickup, entry); });
+        addNode(pickup, 'div', 'Tổng thu: ' + money(data.pickup.amount_due_total), 'group-total');
+      }
+      if (!data.delivery.zones.length && !data.pickup.orders.length) emptyText(target, 'Chưa có đơn cần giao.');
+    }
+
+    function renderHeld(target, data) {
+      data.held.forEach(function (entry) {
+        var card = addNode(target, 'div', null, 'card');
+        var head = addNode(card, 'div', null, 'entry-head');
+        codeButton(head, entry.order_code);
+        addNode(head, 'span', money(entry.amount), 'entry-due');
+        addNode(card, 'span', entry.reason, entry.reason.indexOf('chuyển khoản') !== -1 ? 'flag transfer' : 'flag call');
+        renderOrderFields(card, entry, true);
+        renderActions(card, entry);
+      });
+      if (!data.held.length) emptyText(target, 'Không có đơn nào đang chờ.');
+    }
+
+    function renderLists() {
+      var target = byId('lists');
+      if (!listsData) return;
+      target.textContent = '';
+      var view = radioValue('list-view') || 'prep';
+      if (view === 'delivery') renderDelivery(target, listsData);
+      else if (view === 'held') renderHeld(target, listsData);
+      else renderPrep(target, listsData);
+    }
+
+    function renderCounts(data) {
+      byId('count-prep').textContent = 'Chuẩn bị · ' + data.prep.total_cups;
+      byId('count-delivery').textContent = 'Giao · ' + (data.delivery.stops + data.pickup.orders.length);
+      byId('count-held').textContent = 'Đang chờ · ' + data.held.length;
+    }
+
+    function showSkeleton() {
+      var target = byId('lists');
+      if (listsData) return;
+      target.textContent = '';
+      for (var i = 0; i < 3; i++) addNode(target, 'div', null, 'skeleton');
+    }
+
+    /** Tải danh sách và trạng thái. Chỉ lần gọi mới nhất được hiện, phản hồi chậm của lần trước bị bỏ qua. */
+    function loadLists() {
+      var requestId = ++latestListsRequest;
+      showSkeleton();
+      byId('updated-at').textContent = 'Đang tải…';
+      byId('refresh').disabled = true;
+      google.script.run
+        .withSuccessHandler(function (data) {
+          if (requestId !== latestListsRequest) return;
+          byId('refresh').disabled = false;
+          if (!data || !data.ok) {
+            var text = data && data.error_code === 'UNAUTHORIZED'
+              ? DENIED_TEXT
+              : 'Chưa lấy được danh sách. Bấm Làm mới để thử lại.';
+            byId('updated-at').textContent = text;
+            if (!listsData) {
+              byId('lists').textContent = '';
+              emptyText(byId('lists'), text);
+            }
+            return;
+          }
+          listsData = data;
+          renderStatus(data.status);
+          renderCounts(data);
+          renderLists();
+          byId('updated-at').textContent = 'Cập nhật lúc ' + String(data.generated_at).slice(11, 16);
+        })
+        .withFailureHandler(function () {
+          if (requestId !== latestListsRequest) return;
+          byId('refresh').disabled = false;
+          byId('updated-at').textContent = 'Chưa kết nối được. Bấm Làm mới để thử lại.';
+          if (!listsData) {
+            byId('lists').textContent = '';
+            emptyText(byId('lists'), 'Chưa kết nối được. Bấm Làm mới để thử lại.');
+          }
+        })
+        .staffOpsLists(KEY);
+    }
+
+    /* ---------- Mục Cài đặt: mật khẩu chỉ nằm trong biến này, không lưu trên máy ---------- */
+
+    var managerPassword = null;
+    var settingsData = null;
+    var savedTimers = {};
+    var LIMIT_FIELDS = [
+      ['max_cups', function (u) { return 'Giới hạn tổng số ' + u + ' trong đợt bán'; }],
+      ['low_stock_alert_cups', function (u) { return 'Báo sắp hết suất khi đã nhận đủ số ' + u + ' này (0 là tắt)'; }],
+      ['max_cups_per_phone_public', function (u) { return 'Số ' + u + ' tối đa mỗi SĐT tự đặt trên trang bán hàng'; }],
+      ['call_threshold_cups', function (u) { return 'Đơn tiền mặt từ số ' + u + ' này phải gọi trước khi làm'; }]
+    ];
+    var FEE_FIELDS = [
+      ['shipping_fee_tu_lay', 'Tự đến lấy (đồng)'],
+      ['shipping_fee_trong_2km', 'Giao trong 2km (đồng)'],
+      ['shipping_fee_den_10km', 'Giao đến 10km (đồng)']
+    ];
+
+    function openSettings() {
+      showTab('settings');
+      if (managerPassword && settingsData) {
+        renderSettings();
+      } else {
+        byId('settings-login').hidden = false;
+        byId('settings-body').hidden = true;
+        byId('manager-password').focus();
+      }
+    }
+
+    function showLoginError(text) {
+      var error = byId('manager-password-error');
+      error.textContent = text || '';
+      error.hidden = !text;
+      if (text) byId('manager-password').setAttribute('aria-invalid', 'true');
+      else byId('manager-password').removeAttribute('aria-invalid');
+    }
+
+    /** Quên mật khẩu trong bộ nhớ và quay về ô nhập mật khẩu. */
+    function lockSettings(message) {
+      managerPassword = null;
+      settingsData = null;
+      byId('manager-password').value = '';
+      byId('setting-limits').textContent = '';
+      byId('setting-fees').textContent = '';
+      byId('setting-products').textContent = '';
+      renderToday(null);
+      byId('settings-body').hidden = true;
+      byId('settings-login').hidden = false;
+      showLoginError(message || '');
+    }
+
+    function unlockSettings() {
+      var password = byId('manager-password').value;
+      if (!password) {
+        showLoginError('Nhập mật khẩu quản lý.');
+        return;
+      }
+      var button = byId('manager-unlock');
+      button.disabled = true;
+      button.textContent = 'Đang mở…';
+      showLoginError('');
+      google.script.run
+        .withSuccessHandler(function (response) {
+          button.disabled = false;
+          button.textContent = 'Mở cài đặt';
+          if (!response || !response.ok) {
+            handleManagerError(response);
+            return;
+          }
+          managerPassword = password;
+          settingsData = response.settings;
+          byId('manager-password').value = '';
+          renderSettings();
+          renderToday(response.today, response.today_error);
+        })
+        .withFailureHandler(function () {
+          button.disabled = false;
+          button.textContent = 'Mở cài đặt';
+          showLoginError('Chưa kết nối được. Kiểm tra mạng rồi thử lại.');
+        })
+        .managerSettings(KEY, password);
+    }
+
+    /** Sai mật khẩu, bị khoá tạm hoặc chưa đặt mật khẩu: quay về ô nhập mật khẩu và nói rõ lý do. */
+    function handleManagerError(response) {
+      if (response && response.error_code === 'UNAUTHORIZED' && response.reason !== 'password') {
+        lockSettings(DENIED_TEXT);
+        return;
+      }
+      if (response && ['UNAUTHORIZED', 'LOCKED', 'NOT_CONFIGURED'].indexOf(response.error_code) !== -1) {
+        lockSettings(response.message);
+        return;
+      }
+      var text = response && response.error_code === 'SERVER_ERROR'
+        ? 'Hệ thống đang lỗi. Thử lại sau ít phút.'
+        : (response && response.message) || 'Chưa lưu được. Thử lại.';
+      if (managerPassword) {
+        byId('settings-error').textContent = text;
+        byId('settings-error').hidden = false;
+      } else {
+        showLoginError(text);
+      }
+    }
+
+    function setSettingError(key, text) {
+      var error = byId('error-' + key);
+      if (!error) return;
+      error.textContent = text || '';
+      error.hidden = !text;
+      var input = byId('setting-' + key);
+      if (!input) return;
+      if (text) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+    }
+
+    function showSaved(key) {
+      var note = byId('saved-' + key);
+      if (!note) return;
+      note.hidden = false;
+      clearTimeout(savedTimers[key]);
+      savedTimers[key] = setTimeout(function () { note.hidden = true; }, 2000);
+    }
+
+    /** Lưu một ô. Mật khẩu được gửi lại mỗi lần để server kiểm tra. */
+    function saveSetting(change, key, onDone) {
+      byId('settings-error').hidden = true;
+      setSettingError(key, '');
+      google.script.run
+        .withSuccessHandler(function (response) {
+          if (!response || !response.ok) {
+            if (response && response.error_code === 'INVALID_INPUT' && response.field) {
+              setSettingError(response.field, response.message);
+            } else {
+              handleManagerError(response);
+            }
+            onDone(false);
+            return;
+          }
+          if (response.refresh_failed) {
+            // Đã ghi vào Sheet nhưng chưa đọc lại được: vẫn báo đã lưu, nhắc tải lại trang.
+            byId('settings-error').textContent = response.message;
+            byId('settings-error').hidden = false;
+          } else {
+            settingsData = response.settings;
+            renderStatus(response.status);
+            applyStaffConfig(response.config);
+          }
+          showSaved(key);
+          if (change.field === 'product' || /^shipping_fee_/.test(change.field)) byId('backup-form-hint').hidden = false;
+          onDone(true, response);
+        })
+        .withFailureHandler(function () {
+          byId('settings-error').textContent = 'Chưa lưu được. Kiểm tra mạng rồi thử lại.';
+          byId('settings-error').hidden = false;
+          onDone(false);
+        })
+        .managerSave(KEY, managerPassword, change);
+    }
+
+    function numberRow(container, key, labelText) {
+      var field = addNode(container, 'div', null, 'field');
+      var label = addNode(field, 'label', labelText);
+      label.setAttribute('for', 'setting-' + key);
+      var row = addNode(field, 'div', null, 'setting-row');
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.id = 'setting-' + key;
+      input.className = 'setting-input';
+      input.inputMode = 'numeric';
+      input.autocomplete = 'off';
+      input.value = settingsData.fields[key];
+      input.setAttribute('aria-describedby', 'error-' + key);
+      row.appendChild(input);
+      var button = addNode(row, 'button', 'Lưu', 'button secondary');
+      button.type = 'button';
+      button.setAttribute('aria-label', 'Lưu ' + labelText);
+      var saved = addNode(field, 'p', 'Đã lưu', 'saved-note');
+      saved.id = 'saved-' + key;
+      saved.hidden = true;
+      var error = addNode(field, 'p', null, 'field-error');
+      error.id = 'error-' + key;
+      error.hidden = true;
+
+      function save() {
+        button.disabled = true;
+        saveSetting({ field: key, value: input.value }, key, function (ok, response) {
+          button.disabled = false;
+          if (ok && response.settings) input.value = settingsData.fields[key];
+        });
+      }
+      button.addEventListener('click', save);
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          save();
+        }
+      });
+    }
+
+    function productRow(container, product) {
+      var row = addNode(container, 'div', null, 'product-row');
+      addNode(row, 'span', product.name + (product.price !== null ? ' · ' + money(product.price) : ''), 'product-name');
+      var label = addNode(row, 'label', null, 'switch');
+      var input = document.createElement('input');
+      input.type = 'checkbox';
+      input.setAttribute('role', 'switch');
+      input.setAttribute('aria-label', 'Bán ' + product.name);
+      input.checked = product.active;
+      label.appendChild(input);
+      addNode(label, 'span', null, 'track');
+      var state = addNode(label, 'span', product.active ? 'Đang bán' : 'Tạm ngừng', 'state');
+      // "Đã lưu" hiện ngay trên dòng của món vừa bật tắt.
+      var savedKey = 'product-' + product.product_id;
+      var saved = addNode(container, 'p', 'Đã lưu', 'saved-note');
+      saved.id = 'saved-' + savedKey;
+      saved.hidden = true;
+      saved.setAttribute('aria-live', 'polite');
+      input.addEventListener('change', function () {
+        var active = input.checked;
+        input.disabled = true;
+        state.textContent = active ? 'Đang bán' : 'Tạm ngừng';
+        saveSetting({ field: 'product', product_id: product.product_id, active: active }, savedKey, function (ok) {
+          input.disabled = false;
+          if (!ok) input.checked = !active;
+          state.textContent = input.checked ? 'Đang bán' : 'Tạm ngừng';
+        });
+      });
+    }
+
+    function renderSettings() {
+      var u = settingsData.unit_label || 'phần';
+      byId('settings-login').hidden = true;
+      byId('settings-body').hidden = false;
+      byId('settings-error').hidden = true;
+      Array.prototype.forEach.call(document.querySelectorAll('input[name=setting-open]'), function (radio) {
+        radio.checked = (radio.value === 'open') === settingsData.orders_open;
+      });
+      var limits = byId('setting-limits');
+      limits.textContent = '';
+      LIMIT_FIELDS.forEach(function (entry) { numberRow(limits, entry[0], entry[1](u)); });
+      var fees = byId('setting-fees');
+      fees.textContent = '';
+      FEE_FIELDS.forEach(function (entry) { numberRow(fees, entry[0], entry[1]); });
+      var products = byId('setting-products');
+      products.textContent = '';
+      settingsData.products.forEach(function (product) { productRow(products, product); });
+      if (!settingsData.products.length) emptyText(products, 'Tab Món chưa có món nào.');
+    }
+
+    /** Ô Hôm nay: cùng số liệu với báo cáo 22h. */
+    function renderToday(today, message) {
+      var body = byId('today-body');
+      body.textContent = '';
+      if (!today) {
+        byId('today-updated').textContent = message || '';
+        return;
+      }
+      var u = today.unit_label || unit();
+      var big = addNode(body, 'div', null, 'today-big');
+      [
+        ['Đã bán', today.cups + ' ' + u],
+        ['Đã thu', money(today.revenue)],
+        ['Còn lại', today.remaining_cups + '/' + today.max_cups + ' ' + u]
+      ].forEach(function (item) {
+        var box = addNode(big, 'div');
+        addNode(box, 'span', item[0], 'meta');
+        addNode(box, 'strong', item[1]);
+      });
+      if (today.by_status.length) {
+        today.by_status.forEach(function (entry) {
+          addNode(body, 'div', entry.label + ': ' + entry.orders + ' đơn · ' + entry.cups + ' ' + u, 'num');
+        });
+      } else {
+        addNode(body, 'div', 'Hôm nay chưa có đơn.', 'meta');
+      }
+      addNode(body, 'div', 'Tỷ lệ bom: ' + today.bom_rate_percent + '%', 'num');
+      byId('today-updated').textContent = 'Cập nhật lúc ' + String(today.generated_at).slice(11, 16);
+    }
+
+    function refreshToday() {
+      if (!managerPassword) return;
+      var button = byId('today-refresh');
+      button.disabled = true;
+      byId('today-updated').textContent = 'Đang tải…';
+      google.script.run
+        .withSuccessHandler(function (response) {
+          button.disabled = false;
+          if (!response || !response.ok) {
+            // Sai mật khẩu hay bị khoá thì handleManagerError đưa về ô mật khẩu; lỗi khác báo ngay ở ô Hôm nay.
+            byId('today-updated').textContent = response && response.error_code !== 'SERVER_ERROR' && response.message
+              ? response.message
+              : 'Chưa tính được số liệu hôm nay. Bấm Làm mới để thử lại.';
+            handleManagerError(response);
+            return;
+          }
+          renderToday(response.today);
+        })
+        .withFailureHandler(function () {
+          button.disabled = false;
+          byId('today-updated').textContent = 'Chưa kết nối được. Bấm Làm mới để thử lại.';
+        })
+        .managerToday(KEY, managerPassword);
+    }
+
+    function onOpenStateChange() {
+      var open = radioValue('setting-open') === 'open';
+      var radios = document.querySelectorAll('input[name=setting-open]');
+      Array.prototype.forEach.call(radios, function (radio) { radio.disabled = true; });
+      saveSetting({ field: 'orders_open', open: open }, 'orders_open', function () {
+        Array.prototype.forEach.call(radios, function (radio) {
+          radio.disabled = false;
+          if (settingsData) radio.checked = (radio.value === 'open') === settingsData.orders_open;
+        });
+      });
+    }
+
+    /* ---------- Khởi động ---------- */
+
+    ['trong_2km', 'den_10km'].forEach(function (zone) {
+      byId('zones').appendChild(chip('radio', 'zone', zone, zoneLabel(zone), false));
+    });
+    addLine();
+    renderStatus(STATUS);
+
+    byId('add-line').addEventListener('click', addLine);
+    byId('order-form').addEventListener('change', function () { refreshLineButtons(); updateTotal(); });
+    byId('order-form').addEventListener('input', updateTotal);
+    byId('order-form').addEventListener('submit', onSubmit);
+    // Enter trong ô nhập không gửi đơn; ô ghi chú vẫn xuống dòng được.
+    byId('order-form').addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' && event.target.tagName !== 'TEXTAREA') event.preventDefault();
+    });
+    ['name', 'phone', 'address'].forEach(function (id) {
+      byId(id).addEventListener('input', function () { if (byId(id + '-error').textContent) setFieldError(id, ''); });
+    });
+    byId('zones').addEventListener('change', function () { if (byId('zones-error').textContent) setFieldError('zones', ''); });
+    byId('transfer-qr').addEventListener('error', function () {
+      byId('transfer-qr').hidden = true;
+      byId('transfer-qr-error').hidden = false;
+    });
+    byId('next-order').addEventListener('click', resetForm);
+    byId('order-detail-close').addEventListener('click', closeOrderDetail);
+    // Esc đóng hộp xác nhận đang mở trước (giữ chữ đã gõ ở chỗ khác), rồi mới đóng chi tiết khi đang thấy nó.
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') return;
+      if (openConfirm && !openConfirm.box.hidden) {
+        event.preventDefault();
+        closeConfirm();
+        return;
+      }
+      if (detailCode && !byId('panel-lists').hidden && !byId('order-detail').hidden) {
+        event.preventDefault();
+        closeOrderDetail();
+      }
+    });
+    byId('cancel-saved').addEventListener('click', function () {
+      if (savedEntry) showConfirm(byId('result-cancel-box'), savedEntry, 'cancel', byId('cancel-saved'));
+    });
+    byId('tab-entry').addEventListener('click', function () { showTab('entry'); });
+    byId('tab-lists').addEventListener('click', function () { showTab('lists'); });
+    byId('held-link').addEventListener('click', function () {
+      showTab('lists');
+      showListView('held');
+    });
+    ['prep', 'delivery', 'held'].forEach(function (view) {
+      byId('view-' + view).addEventListener('change', function () { showListView(view); });
+    });
+    byId('refresh').addEventListener('click', loadLists);
+    byId('open-settings').addEventListener('click', openSettings);
+    byId('manager-unlock').addEventListener('click', unlockSettings);
+    byId('manager-password').addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        unlockSettings();
+      }
+    });
+    byId('manager-lock').addEventListener('click', function () { lockSettings(''); });
+    byId('today-refresh').addEventListener('click', refreshToday);
+    Array.prototype.forEach.call(document.querySelectorAll('input[name=setting-open]'), function (radio) {
+      radio.addEventListener('change', onOpenStateChange);
+    });
+
+    var savedList = recall(STORAGE_LIST);
+    if (savedList === 'prep' || savedList === 'delivery' || savedList === 'held') byId('view-' + savedList).checked = true;
+    showTab(recall(STORAGE_TAB) === 'lists' ? 'lists' : 'entry');
+    loadLists();
+  </script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+{
+  "id": "storeOpsOpsLists01",
+  "versionId": "7d2e3f40-5b6c-4d7e-9f80-a1b2c3d4e5f6",
+  "name": "Store Ops - Gửi danh sách chuẩn bị và giao",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0,30 8-20 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 21 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Mỗi 30 phút từ 8h đến 21h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1a4b8d21-6c2f-4b63-8e7f-2b3c4d5e6f01"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== CẤU HÌNH: sửa ba giá trị này =====\nreturn [{\n  json: {\n    web_app_url: 'DAN_URL_WEB_APP_VAO_DAY',\n    notify_to: 'DAN_EMAIL_NHOM_VAO_DAY',\n    from_email: 'DAN_GMAIL_GUI_VAO_DAY',\n  },\n}];"
+      },
+      "name": "Cấu hình",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "1a4b8d21-6c2f-4b63-8e7f-2b3c4d5e6f02"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.web_app_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "ops_lists"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "name": "Lấy danh sách",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "1a4b8d21-6c2f-4b63-8e7f-2b3c4d5e6f03",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "storeOpsWebAppKey",
+          "name": "Store Ops - khoa Apps Script"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Apps Script đã tính sẵn nội dung và biết danh sách có đổi không. Không đổi thì dừng ở đây.\nconst data = $input.first().json;\nconst cfg = $('Cấu hình').first().json;\nif (data.ok !== true) {\n  throw new Error('Apps Script không trả danh sách: ' + (data.error_code || 'phản hồi lạ'));\n}\nif (data.changed !== true) return [];\nreturn [{\n  json: {\n    subject: data.subject,\n    text: data.text,\n    to: cfg.notify_to,\n    from: cfg.from_email,\n    ack: { signature: data.signature },\n  },\n}];"
+      },
+      "name": "Soạn email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "1a4b8d21-6c2f-4b63-8e7f-2b3c4d5e6f04"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.from }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Gửi email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "1a4b8d21-6c2f-4b63-8e7f-2b3c4d5e6f05",
+      "credentials": {
+        "smtp": {
+          "id": "storeOpsGmailSmtp",
+          "name": "Store Ops - Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.web_app_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "ops_lists_ack"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Soạn email').first().json.ack) }}",
+        "options": {
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "name": "Xác nhận đã gửi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "1a4b8d21-6c2f-4b63-8e7f-2b3c4d5e6f06",
+      "executeOnce": true,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "storeOpsWebAppKey",
+          "name": "Store Ops - khoa Apps Script"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Xác nhận lỗi thì để execution đỏ cho dễ thấy; lần sau danh sách được gửi lại, không mất.\nconst data = $input.first().json;\nif (data.ok !== true) {\n  throw new Error('Apps Script không nhận xác nhận: ' + (data.error_code || 'phản hồi lạ'));\n}\nreturn [{ json: { ok: true } }];"
+      },
+      "name": "Kiểm tra xác nhận",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "1a4b8d21-6c2f-4b63-8e7f-2b3c4d5e6f07"
+    }
+  ],
+  "connections": {
+    "Mỗi 30 phút từ 8h đến 21h": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cấu hình": {
+      "main": [
+        [
+          {
+            "node": "Lấy danh sách",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy danh sách": {
+      "main": [
+        [
+          {
+            "node": "Soạn email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Soạn email": {
+      "main": [
+        [
+          {
+            "node": "Gửi email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi email": {
+      "main": [
+        [
+          {
+            "node": "Xác nhận đã gửi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xác nhận đã gửi": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra xác nhận",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "saveDataSuccessExecution": "none"
+  },
+  "active": false
+}

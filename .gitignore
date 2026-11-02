@@ -1,0 +1,8 @@
+*.log
+
+# Không đẩy lên git: công cụ BMad, cấu hình Claude, biến môi trường, cài đặt editor
+_bmad/
+_bmad-output/
+.claude/
+.vscode/
+.env

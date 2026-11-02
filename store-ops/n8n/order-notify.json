@@ -1,0 +1,259 @@
+{
+  "id": "storeOpsOrderNotify01",
+  "versionId": "6c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e5",
+  "name": "Store Ops - Báo đơn mới qua email",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "name": "Mỗi phút",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0f3a7c10-5b1e-4a52-9d6e-1a2b3c4d5e01"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== CẤU HÌNH: sửa ba giá trị này =====\nreturn [{\n  json: {\n    web_app_url: 'DAN_URL_WEB_APP_VAO_DAY',\n    notify_to: 'DAN_EMAIL_NHOM_VAO_DAY',\n    from_email: 'DAN_GMAIL_GUI_VAO_DAY',\n  },\n}];"
+      },
+      "name": "Cấu hình",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "0f3a7c10-5b1e-4a52-9d6e-1a2b3c4d5e02"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.web_app_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "pending"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "name": "Lấy đơn chờ báo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "0f3a7c10-5b1e-4a52-9d6e-1a2b3c4d5e03",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "storeOpsWebAppKey",
+          "name": "Store Ops - khoa Apps Script"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Soạn email từ phản hồi của Apps Script. Không có gì để báo thì dừng ở đây.\n// Khuôn: tiêu đề nói số việc, dòng đầu chỉ nêu điều cần làm ngay, việc cần làm ghi trên dòng của từng đơn.\nconst data = $input.first().json;\nconst cfg = $('Cấu hình').first().json;\nif (data.ok !== true) {\n  throw new Error('Apps Script không trả danh sách đơn: ' + (data.error_code || 'phản hồi lạ'));\n}\n\nconst unit = data.unit_label || 'phần';\nconst money = (v) => String(v).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') + 'đ';\nconst SOURCE = { landing: 'trang bán hàng', messenger: 'Messenger', backup: 'form dự phòng' };\nconst ZONE = { trong_2km: 'trong 2km', den_10km: 'đến 10km' };\nconst STATUS = { dang_lam: 'Đang làm', dang_giao: 'Đang giao', xong: 'Xong', huy: 'Huỷ', bom: 'Bom' };\nconst sentence = (text) => {\n  const clean = String(text || '').trim().replace(/[.]+$/, '');\n  return clean ? clean.charAt(0).toLowerCase() + clean.slice(1) : '';\n};\n\n// created_at là 'yyyy-MM-dd HH:mm:ss' giờ Việt Nam. Đơn không phải hôm nay (báo muộn sau khi máy tắt qua đêm) ghi cả ngày.\nconst todayVn = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);\nconst when = (createdAt) => {\n  const text = String(createdAt);\n  const time = text.slice(11, 16);\n  if (!/^\\d{4}-\\d{2}-\\d{2} /.test(text) || text.slice(0, 10) === todayVn) return time;\n  return text.slice(8, 10) + '/' + text.slice(5, 7) + ' ' + time;\n};\n\nconst orderText = (o) => {\n  const head = [o.order_code, o.cups + ' ' + unit, money(o.total)];\n  if (o.needs_call) head.push('CẦN GỌI' + (o.call_reason ? ': ' + o.call_reason : ' trước khi làm'));\n  if (o.payment_status === 'cho_chuyen_khoan') head.push('Chờ chuyển khoản');\n  if (o.payment_status === 'da_nhan') head.push('Đã nhận tiền');\n  if (STATUS[o.status]) head.push('Trạng thái: ' + STATUS[o.status]);\n  const lines = [\n    head.join(' · '),\n    '  ' + o.name + ' · ' + o.phone + ' · ' + (o.delivery_method === 'giao' ? 'Giao ' + (ZONE[o.zone] || o.zone) : 'Tự đến lấy'),\n  ];\n  if (o.delivery_method === 'giao' && o.address) lines.push('  ' + o.address);\n  lines.push('  ' + o.items_text);\n  if (o.note) lines.push('  Ghi chú: ' + o.note);\n  if (o.contact) lines.push('  Liên hệ: ' + o.contact);\n  lines.push('  Qua ' + (SOURCE[o.source] || o.source) + ' lúc ' + when(o.created_at));\n  return lines.join('\\n');\n};\n\nconst orders = data.orders || [];\nconst low = data.low_stock || {};\nconst configAlert = data.config_alert || {};\nconst backupErrors = data.backup_errors || [];\nconst emails = [];\n\nif (configAlert.alert === true) {\n  emails.push({\n    subject: '⚠️ Tab Cấu hình đang có ô sai',\n    text: (configAlert.messages || []).join('\\n') + '\\nVẫn nhận đơn bình thường.',\n  });\n}\n\nif (low.alert === true) {\n  emails.push({\n    subject: '⚠️ Còn ' + low.remaining_cups + ' ' + unit + ' cuối',\n    text: 'Đã nhận ' + low.counted_cups + '/' + low.max_cups + ' ' + unit + '.',\n  });\n}\n\nif (orders.length > 0) {\n  const cups = orders.reduce((sum, o) => sum + o.cups, 0);\n  const calls = orders.filter((o) => o.needs_call).length;\n  const subject = ['🔔 ' + orders.length + ' đơn mới', cups + ' ' + unit];\n  if (calls) subject.push(calls + ' cần gọi');\n  const blocks = orders.map(orderText);\n  if (calls) blocks.unshift('Có ' + orders.length + ' đơn mới, ' + calls + ' đơn cần gọi trước khi làm.');\n  emails.push({ subject: subject.join(' · '), text: blocks.join('\\n\\n') });\n}\n\nif (backupErrors.length > 0) {\n  emails.push({\n    subject: '⚠️ ' + backupErrors.length + ' đơn từ form dự phòng chưa nhận được',\n    text: backupErrors\n      .map((e) => {\n        const who = (e.name || 'khách') + (e.phone ? ' (' + e.phone + ')' : '');\n        return [\n          'Đơn của ' + who + ' chưa vào hệ thống: ' + sentence(e.message) + '.',\n          '  Gửi lúc ' + e.created_at,\n          '  Khách gửi: ' + e.answers,\n        ].join('\\n');\n      })\n      .join('\\n\\n'),\n  });\n}\n\n// ack đi cùng email: chỉ đánh dấu đúng những gì đã gửi.\nconst ack = {\n  codes: orders.map((o) => o.order_code),\n  low_stock: low.alert === true,\n  backup_errors: backupErrors.map((e) => e.response_id),\n};\nif (configAlert.alert === true) ack.config_alert = configAlert.signature;\nreturn emails.map((email) => ({\n  json: { ...email, to: cfg.notify_to, from: cfg.from_email, ack },\n}));"
+      },
+      "name": "Soạn email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "0f3a7c10-5b1e-4a52-9d6e-1a2b3c4d5e04"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.from }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Gửi email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "0f3a7c10-5b1e-4a52-9d6e-1a2b3c4d5e05",
+      "credentials": {
+        "smtp": {
+          "id": "storeOpsGmailSmtp",
+          "name": "Store Ops - Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.web_app_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "ack"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Soạn email').first().json.ack) }}",
+        "options": {
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "name": "Đánh dấu đã báo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "0f3a7c10-5b1e-4a52-9d6e-1a2b3c4d5e06",
+      "executeOnce": true,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "storeOpsWebAppKey",
+          "name": "Store Ops - khoa Apps Script"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ack lỗi thì để execution đỏ cho dễ thấy; phút sau đơn được báo lại, không mất.\nconst data = $input.first().json;\nif (data.ok !== true) {\n  throw new Error('Apps Script không nhận ack: ' + (data.error_code || 'phản hồi lạ'));\n}\nreturn [{ json: { acked: data.acked } }];"
+      },
+      "name": "Kiểm tra ack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "0f3a7c10-5b1e-4a52-9d6e-1a2b3c4d5e07"
+    }
+  ],
+  "connections": {
+    "Mỗi phút": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cấu hình": {
+      "main": [
+        [
+          {
+            "node": "Lấy đơn chờ báo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy đơn chờ báo": {
+      "main": [
+        [
+          {
+            "node": "Soạn email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Soạn email": {
+      "main": [
+        [
+          {
+            "node": "Gửi email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi email": {
+      "main": [
+        [
+          {
+            "node": "Đánh dấu đã báo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đánh dấu đã báo": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra ack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "saveDataSuccessExecution": "none"
+  },
+  "active": false
+}

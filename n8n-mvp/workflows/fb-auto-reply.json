@@ -1,0 +1,133 @@
+{
+  "id": "fbAutoReply0001",
+  "versionId": "58116d96-45bf-4083-8936-d659fe382e74",
+  "name": "FB Messenger - Tự động trả lời",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "fb-messenger",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "FB Verify (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "fb-verify",
+      "id": "511ad2c5-932a-4f19-94e6-6e0032a55636"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.verify_token'] === 'cuahang_verify_123' ? $json.query['hub.challenge'] : 'invalid token' }}",
+        "options": {}
+      },
+      "name": "Trả challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        0
+      ],
+      "id": "8b6fc8fb-e05f-44ab-9c9d-5a1ba34d53ff"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fb-messenger",
+        "options": {}
+      },
+      "name": "FB Tin nhắn (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        220
+      ],
+      "webhookId": "fb-message",
+      "id": "94fbc132-0f40-4247-b89e-377bb3b710f6"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== CẤU HÌNH: dán Page Access Token vào đây =====\nconst PAGE_TOKEN = 'DAN_PAGE_ACCESS_TOKEN_VAO_DAY';\n\n// Kịch bản trả lời theo từ khóa (sửa tùy cửa hàng)\nconst rules = [\n  { keys: ['giá', 'gia', 'bao nhiêu'], reply: 'Dạ, bảng giá shop: Áo thun 150k, Quần jean 350k. Anh/chị cần mẫu nào ạ?' },\n  { keys: ['ship', 'giao hàng', 'phí ship'], reply: 'Shop giao toàn quốc, phí ship 30k, freeship đơn từ 500k ạ.' },\n  { keys: ['địa chỉ', 'dia chi', 'ở đâu'], reply: 'Shop ở 123 Nguyễn Trãi, Hà Nội. Mở cửa 8h–21h ạ.' },\n  { keys: ['đặt hàng', 'mua', 'order'], reply: 'Anh/chị gửi giúp shop: Tên + SĐT + Địa chỉ + Sản phẩm, shop lên đơn ngay ạ!' },\n];\nconst fallback = 'Cảm ơn anh/chị đã nhắn tin! Gõ \"giá\", \"ship\", \"địa chỉ\" hoặc \"đặt hàng\" để được hỗ trợ nhanh ạ.';\n\nconst out = [];\nfor (const entry of $json.body?.entry ?? []) {\n  for (const ev of entry.messaging ?? []) {\n    const text = ev.message?.text;\n    if (!text || ev.message?.is_echo) continue;\n    const lower = text.toLowerCase();\n    const rule = rules.find(r => r.keys.some(k => lower.includes(k)));\n    out.push({ json: { psid: ev.sender.id, text, reply: rule ? rule.reply : fallback, token: PAGE_TOKEN } });\n  }\n}\nreturn out;"
+      },
+      "name": "Chọn câu trả lời",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        220
+      ],
+      "id": "e59997b4-a2ec-481a-aade-a63677f95546"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/me/messages",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{ $json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ recipient: { id: $json.psid }, messaging_type: 'RESPONSE', message: { text: $json.reply } }) }}",
+        "options": {}
+      },
+      "name": "Gửi trả lời FB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        220
+      ],
+      "id": "1c5946d6-3028-45c1-9ecb-1d1e50a8028a"
+    }
+  ],
+  "connections": {
+    "FB Verify (GET)": {
+      "main": [
+        [
+          {
+            "node": "Trả challenge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FB Tin nhắn (POST)": {
+      "main": [
+        [
+          {
+            "node": "Chọn câu trả lời",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chọn câu trả lời": {
+      "main": [
+        [
+          {
+            "node": "Gửi trả lời FB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
